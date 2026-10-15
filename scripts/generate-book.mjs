@@ -13,7 +13,7 @@ for (const lesson of LESSONS) {
     const node = nodes[keyOf(history)] ??= { moves: {}, lessons: [lesson.id] };
     for (let w = 0; w < 225; w++) if (!board[w]) {
       const white = coordOf(w);
-      if (node.moves[white] || analyzeMove(board, w, WHITE).win || n < 11) continue;
+      if (node.moves[white] || analyzeMove(board, w, WHITE).win) continue;
       board[w] = WHITE;
       const proof = vcf(board, n === lesson.moves.length ? 5 : 2, n === lesson.moves.length ? 600 : 25);
       board[w] = 0;

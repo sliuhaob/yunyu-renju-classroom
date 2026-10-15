@@ -17,6 +17,21 @@ test('black five is prewritten as G10 and both white-six choices work', () => {
 test('unsupported white move rejects without mutating history', () => {
   const history = [...OPENING,'G10']; assert.throws(() => advance(book, history, 'A1', 'main'), /尚未收录/); assert.equal(history.length, 5);
 });
+test('early off-line defenses enter a proved win for every remaining white reply', () => {
+  const cases = [
+    { id: 'j7', history: [...OPENING, 'G10', 'J7', 'G8'], reply: 'F8' },
+    { id: 'main', history: [...OPENING, 'G10', 'G8', 'F9', 'F10', 'H11'], reply: 'I12' }
+  ];
+  for (const { id, history, reply } of cases) {
+    const state = advance(book, history, 'A1', id);
+    assert.equal(state.blackMove, reply);
+    assert.equal(state.choices.length, 225 - state.history.length);
+    for (const defense of state.choices) {
+      const result = advance(book, state.history, defense, id);
+      assert.equal(result.outcome?.winner, 1, id + ': ' + defense);
+    }
+  }
+});
 for (const lesson of LESSONS) test(`full ${lesson.id} demonstration ends in black five`, () => {
   let state = advance(book, OPENING, null, lesson.id), steps = 0;
   while (!state.outcome && steps++ < 110) state = advance(book, state.history, state.hints[0] || state.choices[0], lesson.id);

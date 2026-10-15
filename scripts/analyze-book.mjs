@@ -42,8 +42,8 @@ for (let choices = 1; choices <= 10; choices++) {
     cumulativeBytesAt64: (accumulated * 64n).toString()
   });
 }
-// Current generator deliberately skips these early positions. Measure whether
-// its VCF solver can generate even one reply for any of the 220 white-six moves.
+// Measure whether the VCF solver can generate even one reply for any of the
+// 220 white-six moves, where the initial black stones are still dispersed.
 // A null result here says nothing about the position's true game-theoretic value.
 const { board } = playHistory(rootHistory);
 const start = performance.now();
