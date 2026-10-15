@@ -89,7 +89,10 @@ try {
   }
   // Explicitly requested defenses are fully expanded, even when outside the
   // engine's candidate shortlist. Attach them only after their lines close.
-  const requested = [{ history: [...prefix, 'H11', 'E9'], move: 'D9' }];
+  const requested = [
+    { history: [...prefix, 'H11', 'E9'], move: 'D9' },
+    { history: [...prefix, 'H11', 'E9', 'D9', 'F11'], move: 'E12' }
+  ];
   for (const { history, move } of requested) {
     const { board } = playHistory(history);
     if (nodes[keyOf(history)]?.turn !== WHITE || !analyzeMove(board, indexOf(move), WHITE).legal) throw new Error('Invalid requested defense: ' + keyOf(history) + ' -> ' + move);

@@ -17,6 +17,11 @@ test('G8 challenge fixes the opening while the legacy J7 variation remains avail
   const afterH11 = advance(book, [...start.history, 'G8', 'F9'], 'H11', 'main');
   assert.equal(afterH11.blackMove, 'E9');
   assert.deepEqual(afterH11.choices, ['F7', 'J11', 'D9']);
+  const afterD9 = advance(book, afterH11.history, 'D9', 'main');
+  assert.equal(afterD9.blackMove, 'F11');
+  assert.deepEqual(afterD9.choices, ['H9', 'E12']);
+  const afterE12 = advance(book, afterD9.history, 'E12', 'main');
+  assert.equal(afterE12.blackMove, 'F10');
 });
 test('unsupported white move rejects without mutating history', () => {
   const history = [...OPENING,'G10']; assert.throws(() => advance(book, history, 'A1', 'main'), /候选点/); assert.equal(history.length, 5);
