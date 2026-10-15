@@ -86,6 +86,15 @@ try {
     console.log('Build white8', w);
     await line([...prefix, w], w === 'F10' ? main : null, true);
   }
+  // Explicitly requested defenses are fully expanded, even when outside the
+  // engine's candidate shortlist. Attach them only after their lines close.
+  const requested = [{ history: [...prefix, 'H11', 'E9'], move: 'D9' }];
+  for (const { history, move } of requested) {
+    const { board } = playHistory(history);
+    if (nodes[keyOf(history)]?.turn !== WHITE || !analyzeMove(board, indexOf(move), WHITE).legal) throw new Error('Invalid requested defense: ' + keyOf(history) + ' -> ' + move);
+    console.log('Build requested white' + (history.length + 1), move);
+    await line([...history, move], null, true);
+  }
   // On the principal lines, add at most two other engine-ranked defenses.
   // Side lines are closed first; their extra candidates are added only when a
   // complete VCF proof is available. No unproved leaf can reach the runtime.
@@ -109,6 +118,7 @@ try {
       }
     }
   }
+  for (const { history, move } of requested) addWhite(history, move);
   // Prove closure and measure minimax distance on the actual curated tree.
   const histogram = {}, leaves = [];
   function close(history) {
