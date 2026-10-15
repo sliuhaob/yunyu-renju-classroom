@@ -93,11 +93,13 @@ try {
     { history: [...prefix, 'H11', 'E9'], move: 'D9' },
     { history: [...prefix, 'H11', 'E9', 'D9', 'F11'], move: 'E12' },
     { history: [...prefix, 'H11', 'E9'], move: 'F11' },
-    { history: [...prefix, 'H11', 'E9'], move: 'H9' }
+    { history: [...prefix, 'H11', 'E9'], move: 'H9' },
+    { history: [...prefix, 'H11', 'E9', 'F11', 'D9', 'C9', 'F10', 'E11', 'G11', 'D8', 'H10'], move: 'I10' }
   ];
   for (const { history, move } of requested) {
-    const { board } = playHistory(history);
-    if (nodes[keyOf(history)]?.turn !== WHITE || !analyzeMove(board, indexOf(move), WHITE).legal) throw new Error('Invalid requested defense: ' + keyOf(history) + ' -> ' + move);
+    const { board, outcome } = playHistory(history);
+    // The parent may be created later while expanding an existing side line.
+    if (history.length % 2 !== 1 || outcome || !analyzeMove(board, indexOf(move), WHITE).legal) throw new Error('Invalid requested defense: ' + keyOf(history) + ' -> ' + move);
     console.log('Build requested white' + (history.length + 1), move);
     await line([...history, move], null, true);
   }
@@ -124,7 +126,10 @@ try {
       }
     }
   }
-  for (const { history, move } of requested) addWhite(history, move);
+  for (const { history, move } of requested) {
+    if (nodes[keyOf(history)]?.turn !== WHITE) throw new Error('Requested defense parent not recorded: ' + keyOf(history));
+    addWhite(history, move);
+  }
   // Prove closure and measure minimax distance on the actual curated tree.
   const histogram = {}, leaves = [];
   function close(history) {
