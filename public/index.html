@@ -16,8 +16,8 @@
   <main>
     <aside class="course-sidebar">
       <div class="eyebrow">开局研习 / 01</div>
-      <h1>云雨月<span>执白防守课</span></h1>
-      <p class="intro">看见进攻的来路，<br>理解每一手防守的意义。</p>
+      <h1>云雨月<span>执白挑战</span></h1>
+      <p class="intro">换一个防点，<br>再试一次。</p>
       <div class="section-label">本期定式 <span>02</span></div>
       <div id="lessons" class="lesson-list" aria-label="课程选择"></div>
       <div class="opening-card">
@@ -29,18 +29,18 @@
       <div class="sidebar-footer"><span class="small-white"></span> 你执白 · 黑棋固定应对<br><small>云月实盘坐标 · 15 × 15</small></div>
     </aside>
     <section class="play-area" aria-label="练习棋盘">
-      <div class="board-heading"><div><div class="eyebrow">LESSON <span id="lesson-number">01</span></div><h2 id="lesson-title">G8 强防主线</h2></div><span class="rule-chip"><i></i> 有禁手</span></div>
+      <div class="board-heading"><div><div class="eyebrow">CHALLENGE <span id="lesson-number">01</span></div><h2 id="lesson-title">G8 防守挑战</h2></div><span class="rule-chip"><i></i> 有禁手</span></div>
       <div class="board-topline"><span id="turn-label"><b class="small-white"></b> 正在载入棋谱</span><span id="move-label">第 4 手</span></div>
       <div class="board-shell"><div id="board" class="board" role="grid" aria-label="15乘15五子棋棋盘，用方向键移动，回车落子"><svg class="grid-lines" viewBox="0 0 600 600" aria-hidden="true" id="grid-svg"></svg><div id="intersections"></div></div></div>
-      <div class="board-legend"><span><i class="last-dot"></i> 最后一手</span><span><i class="hint-dot"></i> 建议防点</span><span><i class="forbidden-dot">×</i> 黑棋禁手</span></div>
-      <div class="play-controls"><button id="undo" class="button light" title="撤回自己与黑棋的上一轮">↶ <span>悔棋</span></button><button id="hint" class="button primary">◉ 防点提示</button><button id="reset" class="button light">↻ <span>重新练习</span></button></div>
+      <div class="board-legend"><span><i class="last-dot"></i> 最后一手</span><span><i class="hint-dot"></i> 可选防点</span><span><i class="forbidden-dot">×</i> 黑棋禁手</span></div>
+      <div class="play-controls"><button id="undo" class="button light" title="撤回自己与黑棋的上一轮">↶ <span>悔棋</span></button><button id="hint" class="button primary">◉ 候选点标记</button><button id="reset" class="button light">↻ <span>重新挑战</span></button></div>
       <div id="feedback" class="feedback" role="status" aria-live="polite">正在连接课堂…</div>
       <div class="display-options"><label><input id="numbers" type="checkbox" checked> 显示手数</label><label><input id="forbidden" type="checkbox"> 标出黑棋禁手</label><button id="symmetry" class="text-button">查看起始棋形 ↗</button></div>
     </section>
     <aside class="study-panel">
       <div class="section-label variation-heading">当前防守 <span id="coverage">—</span></div>
       <div id="variations" class="variations"></div>
-      <p class="coverage-note" id="coverage-note">首期收录两条主线及相应的冲四收束。</p>
+      <p class="coverage-note" id="coverage-note">从少量候选点中选择，黑棋按固定路线应对。</p>
       <div class="record-heading"><div class="section-label">落子记录</div><button id="export" class="text-button">导出 ↗</button></div>
       <div id="move-list" class="move-list" aria-label="逐手棋谱"></div>
       <div class="replay-controls"><button id="first" aria-label="回到白四">|‹</button><button id="prev" aria-label="上一手">‹</button><span id="replay-position">4 / 4</span><button id="next" aria-label="下一手">›</button><button id="last" aria-label="回到最新一步">›|</button></div>
@@ -50,6 +50,15 @@
   </main>
   <footer class="page-footer"><span>云雨棋室 <span class="footer-dot">·</span> 专注一局，读懂攻防</span><span id="connection">连接中</span></footer>
   <dialog id="rules-dialog"><form method="dialog"><button class="dialog-close" aria-label="关闭规则">×</button></form><div class="eyebrow">RENJU RULES</div><h2>有禁手，如何判断？</h2><p>本课使用连珠行棋禁手规则。固定开局练习，不进行三手交换或五手打点。</p><div class="rule-row"><b>三三</b><p>黑棋一手形成两个真实活三，属于禁手。只有能够合法延伸成活四的“三”才计入；假活三不计。</p></div><div class="rule-row"><b>四四</b><p>黑棋一手形成两个四，属于禁手。同一个活四的两个成五点，只算一个四。</p></div><div class="rule-row"><b>长连</b><p>黑棋连成六子或更多属于禁手。按 RIF 第9条，同时在另一方向形成恰好五连时，成五优先。</p></div><div class="rule-row"><b>白棋</b><p>白棋没有三三、四四和长连限制；五连或长连均获胜。</p></div><a href="https://gomoku.renju.net/rifrules/" target="_blank" rel="noreferrer">查看 RIF 国际连珠规则 ↗</a></dialog>
-  <dialog id="sources-dialog"><form method="dialog"><button class="dialog-close" aria-label="关闭棋谱说明">×</button></form><div class="eyebrow">ABOUT THIS LESSON</div><h2>定式与收录范围</h2><p>你执白练防守，黑棋使用固定棋谱应对。本期为云月：H8、I9、I8、H7，黑五 G10。云月与雨月存在盘端距离差异，因此不把本谱直接平移成雨月。</p><p>首期收录 G8、J7 两条白六变化。已录入主线之外，部分漏防和连续冲四收束经程序逐手验证。未收录的着法会暂停并提示，不会调用随机应手。</p><p><strong>收录的是有限教学变化，不是覆盖所有白棋合法走法的完整必胜证明库。</strong></p><p>定式坐标参考励精连珠教室的 i062111、i062725 两幅图。页面图形与讲解文字重新制作，未转载原图或原文。末段冲四手顺由离线程序生成并验证。</p><a href="https://www.ljrenju.com/croom/i06/i06ba.htm" target="_blank" rel="noreferrer">定式参考：励精连珠教室 ↗</a><p id="book-stats"></p></dialog>
+  <dialog id="sources-dialog">
+    <form method="dialog"><button class="dialog-close" aria-label="关闭棋谱说明">×</button></form>
+    <div class="eyebrow">ABOUT THIS CHALLENGE</div><h2>挑战范围</h2>
+    <p>前四手固定 H8、I9、I8、H7。G8 挑战接着固定黑5 G10、白6 G8、黑7 F9，从白8开始选择。</p>
+    <p>每轮白棋有 1–3 个候选点，黑棋只保留一个固定应手。所有可选路线均已逐手验证到黑棋合法成五。这里覆盖的是选定的防守分支，不是所有空点。</p>
+    <p>黑棋在能够连续冲四时采用已验证的最短收束；开局路线尚无全局最短步数证明。J7 保留原有的定式练习。</p>
+    <p>原主线坐标参考励精连珠教室。新增候选来自离线连珠分析，并由本项目独立逐路径校验。</p>
+    <a href="https://www.ljrenju.com/croom/i06/i06ba.htm" target="_blank" rel="noreferrer">定式参考 ↗</a>
+    <p id="book-stats"></p>
+  </dialog>
 </body>
 </html>

@@ -7,6 +7,8 @@ import { vcf } from './tactics.mjs';
 
 const raw = await readFile(new URL('../data/responses.json', import.meta.url));
 const book = JSON.parse(raw);
+const g8Raw = await readFile(new URL('../data/g8.json', import.meta.url));
+const g8 = JSON.parse(g8Raw);
 const whitePositions = [], uniqueProofs = new Set();
 let transitions = 0, proofRecords = 0, proofBytes = 0, immediateWinEntries = 0;
 function countProof(proof) {
@@ -56,7 +58,8 @@ for (let p = 0; p < 225; p++) if (!board[p]) {
 const vcfRootElapsedMs = Math.round(performance.now() - start);
 const report = {
   opening: OPENING, fixedBlackFive: 'G10',
-  current: {
+  g8Challenge: { ...g8.stats, jsonBytes: g8Raw.length, gzipBytes: gzipSync(g8Raw).length },
+  legacyBook: {
     jsonBytes: raw.length, gzipBytes: gzipSync(raw).length,
     recordedPositions: Object.keys(book.nodes).length, transitions,
     provedEntries: book.proved, immediateWinEntries, proofRecords,

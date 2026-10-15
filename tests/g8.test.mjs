@@ -1,0 +1,23 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import g8 from '../data/g8.json' with { type: 'json' };
+import book from '../data/responses.json' with { type: 'json' };
+import { getState, advance } from '../src/session.mjs';
+import { verifyG8 } from '../scripts/verify-g8.mjs';
+
+test('every selected G8 branch is closed, legal and ends in black five', () => {
+  const result = verifyG8();
+  assert.ok(result.paths > 20);
+});
+test('every playable G8 choice works through the runtime API without a dead end', () => {
+  for (const [key, node] of Object.entries(g8.nodes)) {
+    const history = key.split(',');
+    const state = getState(book, history, 'main');
+    assert.deepEqual(state.choices, Object.keys(node.moves));
+    assert.equal(state.curated, true);
+    for (const choice of state.choices) {
+      const next = advance(book, history, state.turn === 2 ? choice : undefined, 'main');
+      assert.ok(next.outcome?.winner === 1 || (next.turn === 2 && next.choices.length >= 1 && next.choices.length <= 9));
+    }
+  }
+});
