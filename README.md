@@ -2,7 +2,7 @@
 
 有禁手五子棋教学：你执白练防守，黑棋按预先录入的定式应对。前端部署到 GitHub Pages，后端部署到 Cloudflare Workers。
 
-自定义域名：https://roxy-design.com
+自定义域名：https://wuzi.roxy-design.com
 
 GitHub Pages 项目：https://sliuhaob.github.io/yunyu-renju-classroom/
 
