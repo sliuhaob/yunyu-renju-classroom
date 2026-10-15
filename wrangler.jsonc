@@ -1,0 +1,10 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "yunyu-renju-api",
+  "main": "worker/index.mjs",
+  "compatibility_date": "2026-10-15",
+  "workers_dev": true,
+  "vars": {
+    "ALLOWED_ORIGINS": "https://roxy-design.com,https://www.roxy-design.com,https://sliuhaob.github.io,http://127.0.0.1:5173,http://localhost:5173"
+  }
+}
