@@ -95,7 +95,9 @@ try {
     { history: [...prefix, 'H11', 'E9'], move: 'F11' },
     { history: [...prefix, 'H11', 'E9'], move: 'H9' },
     { history: [...prefix, 'H11', 'E9', 'F11', 'D9', 'C9', 'F10', 'E11', 'G11', 'D8', 'H10'], move: 'I10' },
-    { history: [...prefix, 'H11', 'E9', 'F11', 'D9', 'C9', 'F10', 'E11', 'G11', 'D8', 'H10', 'I10', 'F8'], move: 'D10' }
+    { history: [...prefix, 'H11', 'E9', 'F11', 'D9', 'C9', 'F10', 'E11', 'G11', 'D8', 'H10', 'I10', 'F8'], move: 'D10' },
+    { history: [...prefix, 'H11', 'E9', 'F11', 'D9', 'C9', 'F10'], move: 'G9' },
+    { history: [...prefix, 'H11', 'E9', 'F11', 'D9', 'C9', 'F10'], move: 'E10' }
   ];
   for (const { history, move } of requested) {
     const { board, outcome } = playHistory(history);
