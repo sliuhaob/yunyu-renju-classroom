@@ -30,14 +30,19 @@ test('white eighteen I10 is available on the C9 side line and stops at four-thre
   assert.deepEqual(getState(book, history, 'main').choices, ['E10', 'I10']);
   const reply = advance(book, history, 'I10', 'main');
   assert.equal(reply.blackMove, 'F8');
-  assert.deepEqual(reply.choices, ['E7', 'G9', 'F7']);
-  for (const defense of reply.choices) {
+  assert.deepEqual(reply.choices, ['E7', 'G9', 'F7', 'D10']);
+  for (const defense of ['E7', 'G9', 'F7']) {
     const end = advance(book, reply.history, defense, 'main');
     assert.equal(end.blackMove, 'D10');
     assert.equal(end.outcome.reason, 'four-three');
     assert.equal(end.history.length, 21);
     assert.deepEqual(end.choices, []);
   }
+  const afterD10 = advance(book, reply.history, 'D10', 'main');
+  assert.equal(afterD10.blackMove, 'G9');
+  assert.equal(afterD10.outcome.reason, 'four-three');
+  assert.equal(afterD10.history.length, 21);
+  assert.deepEqual(afterD10.choices, []);
 });
 test('unsupported white move rejects without mutating history', () => {
   const history = [...OPENING,'G10']; assert.throws(() => advance(book, history, 'A1', 'main'), /候选点/); assert.equal(history.length, 5);
