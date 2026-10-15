@@ -5,7 +5,7 @@ import book from '../data/responses.json' with { type: 'json' };
 import { getState, advance } from '../src/session.mjs';
 import { verifyG8 } from '../scripts/verify-g8.mjs';
 
-test('every selected G8 branch is closed, legal and ends in black five', () => {
+test('every selected G8 branch stops at the first legal black four-three or five', () => {
   const result = verifyG8();
   assert.ok(result.paths > 20);
 });
@@ -18,6 +18,10 @@ test('every playable G8 choice works through the runtime API without a dead end'
     for (const choice of state.choices) {
       const next = advance(book, history, state.turn === 2 ? choice : undefined, 'main');
       assert.ok(next.outcome?.winner === 1 || (next.turn === 2 && next.choices.length >= 1 && next.choices.length <= 9));
+      if (next.outcome) {
+        assert.deepEqual(next.choices, []); assert.deepEqual(next.hints, []);
+        assert.throws(() => advance(book, next.history, 'A1', 'main'), error => error.status === 409);
+      }
     }
   }
 });

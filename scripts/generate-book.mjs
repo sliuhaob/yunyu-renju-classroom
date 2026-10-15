@@ -2,6 +2,7 @@ import { writeFile, mkdir } from 'node:fs/promises';
 import { makeSeedBook, LESSONS, keyOf, BOOK_VERSION } from '../src/book.mjs';
 import { WHITE, coordOf, playHistory, analyzeMove } from '../src/renju.mjs';
 import { vcf } from './tactics.mjs';
+import { trimLegacyBook } from './trim-books.mjs';
 const nodes = makeSeedBook();
 function serialize(proof) {
   return { move: coordOf(proof.move), ...(proof.win ? { win: true } : { threats: proof.threats.map(coordOf), ...(proof.next ? { next: serialize(proof.next) } : {}) }) };
@@ -25,5 +26,6 @@ for (const lesson of LESSONS) {
   }
 }
 await mkdir('data', { recursive: true });
-await writeFile('data/responses.json', JSON.stringify({ version: BOOK_VERSION, nodes, proved }));
-console.log('Wrote', Object.keys(nodes).length, 'positions and', proved, 'forcing proofs.');
+const published = trimLegacyBook({ version: BOOK_VERSION, nodes, proved });
+await writeFile('data/responses.json', JSON.stringify(published));
+console.log('Wrote', Object.keys(published.nodes).length, 'positions and', published.proved, 'forcing proofs.');

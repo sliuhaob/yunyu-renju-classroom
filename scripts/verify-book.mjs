@@ -1,12 +1,21 @@
 import assert from 'node:assert/strict';
 import book from '../data/responses.json' with { type: 'json' };
-import { BLACK, WHITE, playHistory, indexOf, analyzeMove, winningMoves, coordOf } from '../src/renju.mjs';
+import { BOOK_VERSION } from '../src/book.mjs';
+import { BLACK, WHITE, playChallengeHistory as playHistory, indexOf, analyzeMove, winningMoves, coordOf } from '../src/renju.mjs';
 let proofs = 0, blackMoves = 0, entries = 0;
+assert.equal(book.version, BOOK_VERSION);
+assert.equal(book.stopCondition, 'black-four-three-or-five');
 function verifyProof(board, proof) {
   const p = indexOf(proof.move), result = analyzeMove(board, p, BLACK);
   assert.equal(result.legal, true, 'Illegal black move ' + proof.move); blackMoves++;
   if (proof.win) { assert.equal(result.win, true); return; }
+  if (proof.end === 'four-three') {
+    assert.equal(result.fourThree, true);
+    assert.deepEqual(Object.keys(proof).sort(), ['end', 'move']);
+    return;
+  }
   assert.equal(result.win, false);
+  assert.equal(result.fourThree, false, 'Continuation after a four-three');
   board[p] = BLACK;
   const threats = winningMoves(board, BLACK).map(coordOf);
   assert.deepEqual(proof.threats.slice().sort(), threats.slice().sort(), 'Incorrect winning endpoints');

@@ -1,7 +1,8 @@
 // Build a closed, curated G8 strategy OFFLINE. Engine scores are proposals;
-// only fully expanded legal paths ending in black five are published.
+// Build verified winning lines, then publish only up to the first four-three/five.
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { Rapfi } from './rapfi.mjs';
+import { trimG8Book } from './trim-books.mjs';
 import { vcf } from './tactics.mjs';
 import { OPENING, LESSONS, keyOf, BOOK_VERSION } from '../src/book.mjs';
 import { BLACK, WHITE, playHistory, indexOf, coordOf, analyzeMove, winningMoves } from '../src/renju.mjs';
@@ -137,9 +138,10 @@ try {
     earliestWinPly: Math.min(...leaves), latestWinPly: Math.max(...leaves),
     fastestScope: 'Shortest proved VCF suffix; opening replies are engine/source candidates, not a global shortest-mate proof.'
   }};
-  await writeFile(new URL('../data/g8.json', import.meta.url), JSON.stringify(output));
+  const published = trimG8Book(output);
+  await writeFile(new URL('../data/g8.json', import.meta.url), JSON.stringify(published));
   await writeFile(new URL('../artifacts/g8-unresolved.json', import.meta.url), JSON.stringify(unresolved, null, 2));
-  console.log('Built G8', JSON.stringify(output.stats));
+  console.log('Built G8', JSON.stringify(published.stats));
 } finally {
   await writeFile(cachePath, JSON.stringify(cache)); engine.close();
 }

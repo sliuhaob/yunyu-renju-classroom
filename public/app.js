@@ -82,10 +82,10 @@ function render() {
   $('lesson-number').textContent = lessonId === 'main' ? '01' : '02';
   $('turn-label').replaceChildren();
   const dot = document.createElement('b'); dot.className = 'small-white';
-  $('turn-label').append(dot, state.outcome ? '本变化结束 · 黑棋成五' : state.history.length < timeline.length ? '复盘中 · 可从这里继续' : state.turn === 2 ? `轮到你 · 白${state.history.length + 1}` : `轮到黑棋 · 第${state.history.length + 1}手`);
+  $('turn-label').append(dot, state.outcome ? (state.outcome.reason === 'four-three' ? '本变化结束 · 黑棋四三' : '本变化结束 · 黑棋成五') : state.history.length < timeline.length ? '复盘中 · 可从这里继续' : state.turn === 2 ? `轮到你 · 白${state.history.length + 1}` : `轮到黑棋 · 第${state.history.length + 1}手`);
   $('move-label').textContent = `第 ${state.history.length} 手`;
   $('coverage').textContent = state.outcome ? '本局已结束' : state.curated ? `${state.choices.length} 个候选点` : `${state.coverage.supported} / ${state.coverage.empty} 个空点已收录`;
-  $('coverage-note').textContent = state.outcome ? '重新挑战，或悔棋换一个防点。' : state.curated ? '任选标记点落白子，黑棋自动应对。所有可选分支均已走通至黑棋获胜。' : state.coverage.supported === state.coverage.empty ? '此局面的所有空点均有后续收束，可自由尝试。' : '仅对已收录防点给出固定应手；未收录点会保留棋局并提示。';
+  $('coverage-note').textContent = state.outcome ? '重新挑战，或悔棋换一个防点。' : state.curated ? '任选标记点落白子，黑棋自动应对。黑棋形成四三或成五即结束。' : state.coverage.supported === state.coverage.empty ? '此局面的所有空点均可尝试；黑棋形成四三或成五即结束。' : '请选择已收录防点；黑棋形成四三或成五即结束。';
   $('variations').replaceChildren();
   if (state.turn === 2 && !state.outcome) for (const [i, move] of state.hints.entries()) {
     const button = document.createElement('button'); button.className = 'variation'; button.title = `白棋落在 ${move}`;
@@ -125,7 +125,7 @@ async function play(move) {
   await perform(async () => {
     const result = await api('move', { history: state.history, move, lessonId });
     state = result; timeline = [...result.history]; render(); save();
-    feedback(result.outcome ? '黑棋获胜。可以重新挑战。' : '黑棋已落子，轮到你了。');
+    feedback(result.outcome ? (result.outcome.reason === 'four-three' ? '黑棋已形成四三，本次挑战结束。' : '黑棋成五获胜。可以重新挑战。') : '黑棋已落子，轮到你了。');
     const current = $('move-list').querySelector('.current'); if (current) $('move-list').scrollTop = current.offsetTop - $('move-list').offsetTop - 70;
   });
 }
@@ -159,7 +159,7 @@ $('last').onclick = () => { stopDemo(); goTo(timeline.length); };
 $('next').onclick = () => { stopDemo(); state.history.length < timeline.length ? goTo(state.history.length + 1) : play(); };
 $('demo').onclick = async () => { if (demo) { stopDemo(); return; } if (state?.outcome) await reset(); demo = true; $('demo').textContent = 'Ⅱ 暂停演示'; demoStep(); };
 $('export').onclick = () => {
-  const payload = { title: '云雨棋室 · ' + catalog.lessons.find(l => l.id === lessonId).name, rules: 'RIF renju; fixed opening', version: state.version, lessonId, history: timeline, source: state.source };
+  const payload = { title: '云雨棋室 · ' + catalog.lessons.find(l => l.id === lessonId).name, rules: 'RIF renju; fixed opening', stopCondition: 'black-four-three-or-five', version: state.version, lessonId, history: timeline, source: state.source };
   const url = URL.createObjectURL(new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' }));
   const link = document.createElement('a'); link.href = url; link.download = `yunyu-${lessonId}-${timeline.length}.json`; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); feedback('已导出当前棋谱。');
 };
@@ -167,7 +167,7 @@ for (const id of ['rules','sources']) { $(id + '-open').onclick = () => $(id + '
 makeBoard();
 await perform(async () => {
   catalog = await api('lessons');
-  $('book-stats').textContent = `棋谱版本 ${catalog.version} · G8 挑战：${catalog.g8.positions} 个局面，${catalog.g8.terminalPaths} 条完整终局路线。`;
+  $('book-stats').textContent = `棋谱版本 ${catalog.version} · G8 挑战：${catalog.g8.positions} 个局面，${catalog.g8.terminalPaths} 条挑战路线。`;
   for (const [i, lesson] of catalog.lessons.entries()) {
     const button = document.createElement('button'); button.className = 'lesson-item'; button.dataset.id = lesson.id;
     const num = document.createElement('span'); num.className = 'lesson-num'; num.textContent = '0' + (i + 1);

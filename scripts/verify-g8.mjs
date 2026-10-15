@@ -2,15 +2,16 @@ import assert from 'node:assert/strict';
 import { pathToFileURL } from 'node:url';
 import g8 from '../data/g8.json' with { type: 'json' };
 import { OPENING, BOOK_VERSION, keyOf } from '../src/book.mjs';
-import { BLACK, WHITE, playHistory, analyzeMove, indexOf, coordOf, winningMoves } from '../src/renju.mjs';
+import { BLACK, WHITE, playChallengeHistory as playHistory, analyzeMove, indexOf, coordOf, winningMoves } from '../src/renju.mjs';
 
 export function verifyG8(tree = g8) {
   assert.equal(tree.version, BOOK_VERSION);
   assert.deepEqual(tree.opening, OPENING);
-  const visited = new Set(), endings = [], histogram = {};
+  assert.equal(tree.stopCondition, 'black-four-three-or-five');
+  const visited = new Set(), endings = [], histogram = {}, reasons = { 'four-three': 0, five: 0 };
   function visit(history) {
     const { board, outcome } = playHistory(history);
-    if (outcome) { assert.equal(outcome.winner, BLACK); endings.push(history.length); return 0; }
+    if (outcome) { assert.equal(outcome.winner, BLACK); endings.push(history.length); reasons[outcome.reason]++; return 0; }
     const key = keyOf(history), node = tree.nodes[key], color = history.length % 2 ? WHITE : BLACK;
     assert.ok(node, 'Unclosed branch: ' + key);
     visited.add(key);
@@ -29,15 +30,17 @@ export function verifyG8(tree = g8) {
       return 1 + visit([...history, move]);
     });
     const max = Math.max(...distances);
-    assert.equal(node.maxPliesToWin, max, 'Incorrect remaining distance');
+    assert.equal(node.maxPliesToEnd, max, 'Incorrect remaining distance');
     return max;
   }
   visit(OPENING);
   assert.equal(visited.size, Object.keys(tree.nodes).length, 'Unreachable nodes');
+  assert.equal(visited.size, tree.stats.positions);
   assert.equal(endings.length, tree.stats.terminalPaths);
   assert.deepEqual(histogram, tree.stats.whiteChoiceHistogram);
-  assert.equal(Math.min(...endings), tree.stats.earliestWinPly);
-  assert.equal(Math.max(...endings), tree.stats.latestWinPly);
-  return { positions: visited.size, paths: endings.length, histogram, earliest: Math.min(...endings), latest: Math.max(...endings) };
+  assert.equal(Math.min(...endings), tree.stats.earliestEndPly);
+  assert.equal(Math.max(...endings), tree.stats.latestEndPly);
+  assert.deepEqual(reasons, tree.stats.endings);
+  return { positions: visited.size, paths: endings.length, histogram, endings: reasons, earliest: Math.min(...endings), latest: Math.max(...endings) };
 }
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) console.log('Verified complete curated G8 tree:', JSON.stringify(verifyG8()));

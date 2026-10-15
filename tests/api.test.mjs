@@ -35,10 +35,14 @@ test('early off-line defenses enter a proved win for every remaining white reply
     }
   }
 });
-for (const lesson of LESSONS) test(`full ${lesson.id} demonstration ends in black five`, () => {
+for (const lesson of LESSONS) test(`${lesson.id} stops at its first four-three and rejects further play`, async () => {
   let state = advance(book, OPENING, null, lesson.id), steps = 0;
   while (!state.outcome && steps++ < 110) state = advance(book, state.history, state.hints[0] || state.choices[0], lesson.id);
   assert.equal(state.outcome?.winner, 1);
+  assert.equal(state.outcome.reason, 'four-three');
+  assert.deepEqual(state.choices, []); assert.deepEqual(state.hints, []);
+  assert.throws(() => advance(book, state.history, 'A1', lesson.id), error => error.status === 409);
+  assert.notEqual((await request('/api/state', { history: [...state.history, 'A1'], lessonId: lesson.id })).status, 200);
   console.log(lesson.id, 'finished at', state.history.length, 'plies');
 });
 test('replay validates arbitrary recorded prefixes, and blocks forged black moves', () => {

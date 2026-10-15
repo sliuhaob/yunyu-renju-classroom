@@ -1,5 +1,5 @@
 import { OPENING, LESSONS, keyOf, BOOK_VERSION } from './book.mjs';
-import { BLACK, WHITE, playHistory, coordOf, indexOf } from './renju.mjs';
+import { BLACK, WHITE, playChallengeHistory as playHistory, coordOf, indexOf } from './renju.mjs';
 import g8 from '../data/g8.json' with { type: 'json' };
 export class LessonError extends Error {
   constructor(message, status = 422, code = 'OUT_OF_BOOK') { super(message); this.status = status; this.code = code; }
@@ -20,7 +20,7 @@ function resolve(book, history) {
     } else if (cursor.type === 'black') {
       if (move !== cursor.proof.move) throw new LessonError('黑棋必须按已录入的棋谱落子', 400, 'BAD_REPLY');
       note = cursor.proof.win ? '黑棋连成五子。复盘刚才的防守，看看进攻从哪里开始变得连续。' : '黑棋冲四。优先防住直接成五点，避免只看自己能否连三。';
-      cursor = cursor.proof.win ? { type: 'done' } : { type: 'white', proof: cursor.proof };
+      cursor = cursor.proof.win || cursor.proof.end === 'four-three' ? { type: 'done' } : { type: 'white', proof: cursor.proof };
     } else {
       const wins = cursor.proof.threats.filter(c => c !== move);
       note = wins.length ? '这一步没有解除黑棋的全部成五威胁。' : '挡住冲四点，黑棋会继续按固定的收束手顺进攻。';
@@ -47,7 +47,7 @@ export function getState(book, history, lessonId = 'main') {
   const preferred = lesson.moves[history.length] || (history.length === lesson.moves.length ? lesson.finishDefense : undefined);
   const onLine = history.every((c, i) => c.toUpperCase() === lesson.moves[i]);
   const recorded = cursor.type === 'recorded' ? choices.filter(c => cursor.node.moves[c].kind === 'recorded') : [];
-  const hints = onLine && choices.includes(preferred) ? [preferred, ...recorded.filter(c => c !== preferred)] : cursor.type === 'white' ? cursor.proof.threats : recorded.length ? recorded : choices.slice(0, 3);
+  const hints = outcome ? [] : onLine && choices.includes(preferred) ? [preferred, ...recorded.filter(c => c !== preferred)] : cursor.type === 'white' ? cursor.proof.threats : recorded.length ? recorded : choices.slice(0, 3);
   return { version: BOOK_VERSION, history: normalized, turn, choices, hints, note: note || '白四已落在 H7，轮到黑五。先观察四子的中心对称关系。', outcome, onLine, phase: cursor.type, lessonId, source: lesson.source, totalRecorded: lesson.moves.length, coverage: { supported: choices.length, empty: board.filter(p => !p).length } };
 }
 function getG8State(history, lesson) {
@@ -63,7 +63,7 @@ function getG8State(history, lesson) {
   const node = g8.nodes[keyOf(normalized)], choices = game.outcome ? [] : Object.keys(node?.moves || {});
   if (!game.outcome && !choices.length) throw new LessonError('分支数据不完整', 500, 'BOOK_ERROR');
   const turn = normalized.length % 2 ? WHITE : BLACK;
-  return { version: BOOK_VERSION, history: normalized, turn, choices, hints: turn === WHITE ? choices : [], note: '', outcome: game.outcome, onLine: false, phase: 'curated', curated: true, lessonId: 'main', source: lesson.source, totalRecorded: g8.stats.latestWinPly, maxPliesToWin: node?.maxPliesToWin || 0, coverage: { supported: choices.length, empty: 225 - normalized.length } };
+  return { version: BOOK_VERSION, history: normalized, turn, choices, hints: turn === WHITE ? choices : [], note: '', outcome: game.outcome, onLine: false, phase: 'curated', curated: true, lessonId: 'main', source: lesson.source, totalRecorded: g8.stats.latestEndPly, maxPliesToEnd: node?.maxPliesToEnd || 0, coverage: { supported: choices.length, empty: 225 - normalized.length } };
 }
 export function advance(book, history, whiteMove, lessonId) {
   const state = getState(book, history, lessonId);

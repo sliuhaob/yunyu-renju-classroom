@@ -1,4 +1,4 @@
-export const BOOK_VERSION = '2026-10-15.5';
+export const BOOK_VERSION = '2026-10-15.6';
 export const OPENING = ['H8', 'I9', 'I8', 'H7'];
 export const SOURCES = [
   { title: '励精连珠教室 · 云月白4 H7、黑5 G10', url: 'https://www.ljrenju.com/croom/i06/i06ba.htm' },
@@ -10,7 +10,7 @@ export const SOURCES = [
 export const LESSONS = [
   {
     id: 'main', name: 'G8 防守挑战', subtitle: '少量选点 · 每支走到终局', level: '进阶', finishDefense: 'G7',
-    description: '白六固定 G8，从白八开始选择防点；全部可选路线均已验证至黑棋获胜。',
+    description: '白六固定 G8，从白八开始选择防点；黑棋形成合法四三或成五时结束挑战。',
     source: SOURCES[0].url, diagram: 'i062111.gif',
     moves: 'H8 I9 I8 H7 G10 G8 F9 F10 H11 I12 H9 F11 J6 J7 K7 K8 I6 I7 F7 E8 H6 G6 I5 H4 L8 M9 L6 K6 M5 N4 L5 L7 J4'.split(' '),
     notes: {

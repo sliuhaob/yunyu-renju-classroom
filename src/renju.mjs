@@ -104,14 +104,18 @@ export function analyzeMove(board, pos, color, memo = new Map()) {
     if (four.length > 1) result = { legal: false, forbidden: true, win: false, reason: 'double-four', patterns: four };
     else {
       const three = realThrees(board, pos, memo);
-      result = three.length > 1 ? { legal: false, forbidden: true, win: false, reason: 'double-three', patterns: three } : { legal: true, forbidden: false, win: false, fours: four.length, threes: three.length };
+      result = three.length > 1 ? { legal: false, forbidden: true, win: false, reason: 'double-three', patterns: three } : {
+        legal: true, forbidden: false, win: false, fours: four.length, threes: three.length,
+        fourThree: four.length === 1 && three.length === 1,
+        ...(four.length === 1 && three.length === 1 ? { fourThreeLine: [...new Set([...four[0].stones, ...three[0].stones])] } : {})
+      };
     }
   }
   board[pos] = 0;
   if (key) memo.set(key, result);
   return result;
 }
-export function playHistory(history) {
+export function playHistory(history, { stopAtFourThree = false } = {}) {
   if (!Array.isArray(history) || history.length > 225) throw new Error('无效棋谱');
   const board = emptyBoard();
   let outcome = null;
@@ -121,10 +125,13 @@ export function playHistory(history) {
     const analysis = analyzeMove(board, p, color);
     if (!analysis.legal) throw new Error(`第 ${i + 1} 手 ${history[i]} 非法：${analysis.reason}`);
     board[p] = color;
-    if (analysis.win) outcome = { winner: color, line: analysis.line };
+    if (analysis.win) outcome = { winner: color, line: analysis.line, reason: 'five' };
+    else if (stopAtFourThree && color === BLACK && analysis.fourThree) outcome = { winner: BLACK, line: analysis.fourThreeLine, reason: 'four-three', trainingStop: true };
   }
   return { board, outcome };
 }
+// Challenge completion is separate from a five-in-a-row win under RIF rules.
+export function playChallengeHistory(history) { return playHistory(history, { stopAtFourThree: true }); }
 export function nearbyMoves(board, distance = 2) {
   const result = new Set();
   for (let p = 0; p < 225; p++) if (board[p]) {
