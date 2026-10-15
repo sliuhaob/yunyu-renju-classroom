@@ -79,14 +79,14 @@ await mkdir(new URL('../artifacts/', import.meta.url), { recursive: true });
 try {
   const prefix = [...OPENING, 'G10', 'G8', 'F9'];
   for (let n = 4; n < prefix.length; n++) setMoves(prefix.slice(0, n), [prefix[n]], 'fixed-opening');
-  // Three serious white-eight choices, instead of adding distant filler moves.
-  setMoves(prefix, ['F10', 'H11', 'F11'], 'candidate');
+  const whiteEight = ['F10', 'H11', 'F11', 'H9'];
+  setMoves(prefix, whiteEight, 'candidate');
   const main = LESSONS.find(l => l.id === 'main').moves;
-  for (const w of ['F10', 'H11', 'F11']) {
+  for (const w of whiteEight) {
     console.log('Build white8', w);
     await line([...prefix, w], w === 'F10' ? main : null, true);
   }
-  // On the three principal lines, add at most two other engine-ranked defenses.
+  // On the principal lines, add at most two other engine-ranked defenses.
   // Side lines are closed first; their extra candidates are added only when a
   // complete VCF proof is available. No unproved leaf can reach the runtime.
   for (let i = 0; i < alternatives.length; i++) {
