@@ -83,10 +83,6 @@ function render() {
   const dot = document.createElement('b'); dot.className = 'small-white';
   $('turn-label').append(dot, state.outcome ? '本变化结束 · 黑棋成五' : state.history.length < timeline.length ? '复盘中 · 可从这里继续' : state.turn === 2 ? `轮到你 · 白${state.history.length + 1}` : `轮到黑棋 · 第${state.history.length + 1}手`);
   $('move-label').textContent = `第 ${state.history.length} 手`;
-  $('coach-kicker').textContent = state.outcome ? '本次变化 · 已完成' : state.onLine ? '定式主线 · 逐手理解' : '分支变化 · 连续冲四';
-  $('coach-title').textContent = state.outcome ? '看懂输在哪里，也是一种进步' : state.history.length === 4 ? '四子相对，黑棋分隔两白' : state.turn === 2 ? `黑${state.history.length} · ${state.history.at(-1)}` : `白${state.history.length} · ${state.history.at(-1)}`;
-  $('coach-text').textContent = state.note;
-  $('coach-tip').textContent = state.outcome ? '回到关键一步，重新选择防守' : state.turn === 2 ? '点选棋盘落白子，黑棋自动应对' : '点击下一手，查看黑棋的固定应对';
   $('coverage').textContent = state.outcome ? '本局已结束' : `${state.coverage.supported} / ${state.coverage.empty} 个空点已收录`;
   $('coverage-note').textContent = state.outcome ? '可以悔棋重试，或复盘每一步。' : state.coverage.supported === state.coverage.empty ? '此局面的所有空点均有后续收束，可自由尝试。' : '仅对已收录防点给出固定应手；未收录点会保留棋局并提示。';
   $('variations').replaceChildren();
@@ -127,7 +123,7 @@ async function play(move) {
   await perform(async () => {
     const result = await api('move', { history: state.history, move, lessonId });
     state = result; timeline = [...result.history]; render(); save();
-    feedback(result.outcome ? '本变化结束。试着复盘：哪一步开始只能被迫防守？' : result.whiteNote || '黑棋已按固定定式应对，轮到你了。');
+    feedback(result.outcome ? '黑棋获胜。可以重新挑战。' : '黑棋已落子，轮到你了。');
     const current = $('move-list').querySelector('.current'); if (current) $('move-list').scrollTop = current.offsetTop - $('move-list').offsetTop - 70;
   });
 }
