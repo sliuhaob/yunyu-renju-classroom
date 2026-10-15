@@ -16,7 +16,9 @@ test('G8 challenge fixes the opening while the legacy J7 variation remains avail
   assert.deepEqual(advance(book, start.history, 'G8', 'main').choices, ['F10', 'H11', 'F11', 'H9']);
   const afterH11 = advance(book, [...start.history, 'G8', 'F9'], 'H11', 'main');
   assert.equal(afterH11.blackMove, 'E9');
-  assert.deepEqual(afterH11.choices, ['F7', 'J11', 'D9']);
+  assert.deepEqual(afterH11.choices, ['F7', 'J11', 'D9', 'F11', 'H9']);
+  assert.equal(advance(book, afterH11.history, 'F11', 'main').blackMove, 'D9');
+  assert.equal(advance(book, afterH11.history, 'H9', 'main').blackMove, 'F10');
   const afterD9 = advance(book, afterH11.history, 'D9', 'main');
   assert.equal(afterD9.blackMove, 'F11');
   assert.deepEqual(afterD9.choices, ['H9', 'E12']);

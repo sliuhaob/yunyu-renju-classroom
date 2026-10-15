@@ -91,7 +91,9 @@ try {
   // engine's candidate shortlist. Attach them only after their lines close.
   const requested = [
     { history: [...prefix, 'H11', 'E9'], move: 'D9' },
-    { history: [...prefix, 'H11', 'E9', 'D9', 'F11'], move: 'E12' }
+    { history: [...prefix, 'H11', 'E9', 'D9', 'F11'], move: 'E12' },
+    { history: [...prefix, 'H11', 'E9'], move: 'F11' },
+    { history: [...prefix, 'H11', 'E9'], move: 'H9' }
   ];
   for (const { history, move } of requested) {
     const { board } = playHistory(history);
