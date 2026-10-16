@@ -54,6 +54,15 @@ test('white eighteen I10 is available on the C9 side line and stops at four-thre
   assert.equal(afterD10.history.length, 21);
   assert.deepEqual(afterD10.choices, []);
 });
+test('white twenty F8 after F7 is met by E8 and ends at four-three', () => {
+  const history = [...OPENING, 'G10', 'G8', 'F9', 'H11', 'E9', 'F11', 'D9', 'C9', 'F10', 'G9', 'D10', 'E10', 'D7', 'D8', 'F7'];
+  assert.deepEqual(getState(book, history, 'main').choices, ['E8', 'G6', 'C6', 'F8']);
+  const end = advance(book, history, 'F8', 'main');
+  assert.equal(end.blackMove, 'E8');
+  assert.equal(end.outcome.reason, 'four-three');
+  assert.equal(end.history.length, 21);
+  assert.deepEqual(end.choices, []);
+});
 test('unsupported white move rejects without mutating history', () => {
   const history = [...OPENING,'G10']; assert.throws(() => advance(book, history, 'A1', 'main'), /候选点/); assert.equal(history.length, 5);
 });
