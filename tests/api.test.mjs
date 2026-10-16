@@ -77,6 +77,12 @@ test('white twenty D11 after D12 is met by C11 and ends at four-three', () => {
     assert.deepEqual(end.choices, []);
   }
 });
+test('white sixteen E10 after K9 is available and has a fixed D8 reply', () => {
+  const history = [...OPENING, 'G10', 'G8', 'F9', 'H11', 'E9', 'H9', 'F10', 'G9', 'D10', 'J9', 'K9'];
+  assert.deepEqual(getState(book, history, 'main').choices, ['H10', 'E10']);
+  const reply = advance(book, history, 'E10', 'main');
+  assert.equal(reply.blackMove, 'D8');
+});
 test('unsupported white move rejects without mutating history', () => {
   const history = [...OPENING,'G10']; assert.throws(() => advance(book, history, 'A1', 'main'), /候选点/); assert.equal(history.length, 5);
 });

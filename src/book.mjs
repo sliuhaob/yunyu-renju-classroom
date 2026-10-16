@@ -1,4 +1,4 @@
-export const BOOK_VERSION = '2026-10-15.13';
+export const BOOK_VERSION = '2026-10-16.1';
 export const OPENING = ['H8', 'I9', 'I8', 'H7'];
 export const SOURCES = [
   { title: '励精连珠教室 · 云月白4 H7、黑5 G10', url: 'https://www.ljrenju.com/croom/i06/i06ba.htm' },
