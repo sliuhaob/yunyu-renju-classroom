@@ -3,11 +3,13 @@
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { Rapfi } from './rapfi.mjs';
 import { trimG8Book } from './trim-books.mjs';
+import { writeCompactG8 } from './compact-g8.mjs';
 import { vcf } from './tactics.mjs';
 import { OPENING, LESSONS, keyOf, BOOK_VERSION } from '../src/book.mjs';
 import { BLACK, WHITE, playHistory, indexOf, coordOf, analyzeMove, winningMoves } from '../src/renju.mjs';
 
 const cachePath = new URL('../artifacts/g8-engine-cache.json', import.meta.url);
+const previousBook = JSON.parse(await readFile(new URL('../data/g8.json', import.meta.url)));
 let cache = {};
 try { cache = JSON.parse(await readFile(cachePath)); } catch {}
 const engine = new Rapfi(), nodes = {}, alternatives = [], unresolved = [];
@@ -155,8 +157,22 @@ try {
     earliestWinPly: Math.min(...leaves), latestWinPly: Math.max(...leaves),
     fastestScope: 'Shortest proved VCF suffix; opening replies are engine/source candidates, not a global shortest-mate proof.'
   }};
-  const published = trimG8Book(output);
+  let published = trimG8Book(output);
+  // Adding a requested branch elsewhere must not replace the recursively
+  // expanded F10 strategy with the older three-candidate seed generator.
+  if (previousBook.coverage?.f10) {
+    const root = previousBook.coverage.f10.root;
+    published = trimG8Book({ ...published, coverage: previousBook.coverage, nodes: {
+      ...Object.fromEntries(Object.entries(published.nodes).filter(([key]) => !key.startsWith(root))),
+      ...Object.fromEntries(Object.entries(previousBook.nodes).filter(([key]) => key.startsWith(root)))
+    } });
+    const coveragePath = new URL('../data/f10-coverage.json', import.meta.url);
+    const coverage = JSON.parse(await readFile(coveragePath));
+    coverage.version = BOOK_VERSION;
+    await writeFile(coveragePath, JSON.stringify(coverage));
+  }
   await writeFile(new URL('../data/g8.json', import.meta.url), JSON.stringify(published));
+  writeCompactG8(published);
   await writeFile(new URL('../artifacts/g8-unresolved.json', import.meta.url), JSON.stringify(unresolved, null, 2));
   console.log('Built G8', JSON.stringify(published.stats));
 } finally {

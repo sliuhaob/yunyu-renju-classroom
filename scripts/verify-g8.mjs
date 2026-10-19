@@ -11,7 +11,11 @@ export function verifyG8(tree = g8) {
   const visited = new Set(), endings = [], histogram = {}, reasons = { 'four-three': 0, five: 0 };
   function visit(history) {
     const { board, outcome } = playHistory(history);
-    if (outcome) { assert.equal(outcome.winner, BLACK); endings.push(history.length); reasons[outcome.reason]++; return 0; }
+    if (outcome) {
+      assert.equal(outcome.winner, BLACK);
+      if (outcome.reason === 'four-three') assert.equal(winningMoves(board, WHITE).length, 0, 'White can immediately win after the recorded four-three: ' + keyOf(history));
+      endings.push(history.length); reasons[outcome.reason]++; return 0;
+    }
     const key = keyOf(history), node = tree.nodes[key], color = history.length % 2 ? WHITE : BLACK;
     assert.ok(node, 'Unclosed branch: ' + key);
     visited.add(key);
@@ -38,9 +42,10 @@ export function verifyG8(tree = g8) {
   assert.equal(visited.size, tree.stats.positions);
   assert.equal(endings.length, tree.stats.terminalPaths);
   assert.deepEqual(histogram, tree.stats.whiteChoiceHistogram);
-  assert.equal(Math.min(...endings), tree.stats.earliestEndPly);
-  assert.equal(Math.max(...endings), tree.stats.latestEndPly);
+  const earliest = endings.reduce((a, b) => Math.min(a, b), Infinity), latest = endings.reduce((a, b) => Math.max(a, b), 0);
+  assert.equal(earliest, tree.stats.earliestEndPly);
+  assert.equal(latest, tree.stats.latestEndPly);
   assert.deepEqual(reasons, tree.stats.endings);
-  return { positions: visited.size, paths: endings.length, histogram, endings: reasons, earliest: Math.min(...endings), latest: Math.max(...endings) };
+  return { positions: visited.size, paths: endings.length, histogram, endings: reasons, earliest, latest };
 }
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) console.log('Verified complete curated G8 tree:', JSON.stringify(verifyG8()));

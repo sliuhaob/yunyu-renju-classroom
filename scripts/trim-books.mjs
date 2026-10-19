@@ -3,6 +3,7 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 import { OPENING, BOOK_VERSION, keyOf } from '../src/book.mjs';
 import { BLACK, WHITE, playChallengeHistory, analyzeMove, indexOf } from '../src/renju.mjs';
+import { writeCompactG8 } from './compact-g8.mjs';
 
 export function trimG8Book(book) {
   const nodes = {}, leaves = [], endings = { 'four-three': 0, five: 0 }, histogram = {};
@@ -26,7 +27,7 @@ export function trimG8Book(book) {
   return { ...book, version: BOOK_VERSION, stopCondition: 'black-four-three-or-five', nodes,
     provenance: { ...book.provenance, verification: 'Every selected path ends at the first legal black four-three or five. Four-three is a challenge stop, not a RIF five-in-a-row result.' },
     stats: { positions: Object.keys(nodes).length, terminalPaths: leaves.length, whiteChoiceHistogram: histogram,
-      earliestEndPly: Math.min(...leaves), latestEndPly: Math.max(...leaves), endings }
+      earliestEndPly: leaves.reduce((a, b) => Math.min(a, b), Infinity), latestEndPly: leaves.reduce((a, b) => Math.max(a, b), 0), endings }
   };
 }
 
@@ -76,6 +77,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   for (const [file, trim] of [['g8.json', trimG8Book], ['responses.json', trimLegacyBook]]) {
     const url = new URL('../data/' + file, import.meta.url), book = trim(JSON.parse(await readFile(url)));
     await writeFile(url, JSON.stringify(book));
+    if (file === 'g8.json') writeCompactG8(book);
     console.log(file, JSON.stringify(book.stats || { positions: Object.keys(book.nodes).length, proved: book.proved }));
   }
 }

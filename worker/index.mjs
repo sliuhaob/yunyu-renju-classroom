@@ -1,5 +1,5 @@
 import book from '../data/responses.json' with { type: 'json' };
-import g8 from '../data/g8.json' with { type: 'json' };
+import g8 from '../data/g8-runtime.json' with { type: 'json' };
 import { LESSONS, OPENING, BOOK_VERSION, SOURCES } from '../src/book.mjs';
 import { getState, advance, LessonError } from '../src/session.mjs';
 export default {

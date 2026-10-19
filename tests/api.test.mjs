@@ -93,6 +93,20 @@ test('white fourteen E10 after D10 is available and has a fixed D8 reply', () =>
 test('unsupported white move rejects without mutating history', () => {
   const history = [...OPENING,'G10']; assert.throws(() => advance(book, history, 'A1', 'main'), /候选点/); assert.equal(history.length, 5);
 });
+
+test('F10 recursively includes the new E8 and F11 counter-defenses', () => {
+  const first = advance(book, [...OPENING, 'G10', 'G8', 'F9'], 'F10', 'main');
+  assert.equal(first.blackMove, 'H11');
+  assert.deepEqual(first.choices, ['I12', 'E8']);
+  const afterE8 = advance(book, first.history, 'E8', 'main');
+  assert.equal(afterE8.blackMove, 'H12');
+  assert.deepEqual(afterE8.choices, ['H10', 'F11', 'H9', 'J7']);
+  const afterI12 = advance(book, first.history, 'I12', 'main');
+  assert.equal(afterI12.blackMove, 'H9');
+  const afterF11 = advance(book, afterI12.history, 'F11', 'main');
+  assert.equal(afterF11.blackMove, 'J6');
+  assert.deepEqual(afterF11.choices, ['J7', 'K6', 'I7', 'K5']);
+});
 test('early off-line defenses enter a proved win for every remaining white reply', () => {
   const cases = [
     { id: 'j7', history: [...OPENING, 'G10', 'J7', 'G8'], reply: 'F8' }

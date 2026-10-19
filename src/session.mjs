@@ -1,6 +1,6 @@
 import { OPENING, LESSONS, keyOf, BOOK_VERSION } from './book.mjs';
 import { BLACK, WHITE, playChallengeHistory as playHistory, coordOf, indexOf } from './renju.mjs';
-import g8 from '../data/g8.json' with { type: 'json' };
+import g8 from '../data/g8-runtime.json' with { type: 'json' };
 export class LessonError extends Error {
   constructor(message, status = 422, code = 'OUT_OF_BOOK') { super(message); this.status = status; this.code = code; }
 }
@@ -54,16 +54,21 @@ function getG8State(history, lesson) {
   if (!Array.isArray(history) || history.length < 4 || history.length > 225 || history.some(c => typeof c !== 'string')) throw new LessonError('棋谱格式无效', 400, 'BAD_HISTORY');
   const normalized = history.map(c => c.toUpperCase());
   if (!OPENING.every((c, i) => normalized[i] === c)) throw new LessonError('前四手固定为 H8、I9、I8、H7', 400, 'BAD_OPENING');
+  let node = g8.nodes[g8.root];
   for (let i = 4; i < normalized.length; i++) {
-    const node = g8.nodes[keyOf(normalized.slice(0, i))];
-    if (!node?.moves[normalized[i]]) throw new LessonError(i % 2 ? '请选择本轮标出的候选点' : '黑棋必须按固定应手落子', 422, i % 2 ? 'OUT_OF_BOOK' : 'BAD_REPLY');
+    let position;
+    try { position = indexOf(normalized[i]); } catch { throw new LessonError('无效坐标', 400, 'BAD_HISTORY'); }
+    let child;
+    for (let edge = 1; node && edge < node.length; edge += 2) if (node[edge] === position) { child = node[edge + 1]; break; }
+    if (child === undefined) throw new LessonError(i % 2 ? '请选择本轮标出的候选点' : '黑棋必须按固定应手落子', 422, i % 2 ? 'OUT_OF_BOOK' : 'BAD_REPLY');
+    node = child < 0 ? null : g8.nodes[child];
   }
   let game;
   try { game = playHistory(normalized); } catch (error) { throw new LessonError(error.message, 400, 'ILLEGAL_HISTORY'); }
-  const node = g8.nodes[keyOf(normalized)], choices = game.outcome ? [] : Object.keys(node?.moves || {});
+  const choices = game.outcome ? [] : node?.filter((_, i) => i % 2 === 1).map(coordOf) || [];
   if (!game.outcome && !choices.length) throw new LessonError('分支数据不完整', 500, 'BOOK_ERROR');
   const turn = normalized.length % 2 ? WHITE : BLACK;
-  return { version: BOOK_VERSION, history: normalized, turn, choices, hints: turn === WHITE ? choices : [], note: '', outcome: game.outcome, onLine: false, phase: 'curated', curated: true, lessonId: 'main', source: lesson.source, totalRecorded: g8.stats.latestEndPly, maxPliesToEnd: node?.maxPliesToEnd || 0, coverage: { supported: choices.length, empty: 225 - normalized.length } };
+  return { version: BOOK_VERSION, history: normalized, turn, choices, hints: turn === WHITE ? choices : [], note: '', outcome: game.outcome, onLine: false, phase: 'curated', curated: true, lessonId: 'main', source: lesson.source, totalRecorded: g8.stats.latestEndPly, maxPliesToEnd: node?.[0] || 0, coverage: { supported: choices.length, empty: 225 - normalized.length } };
 }
 export function advance(book, history, whiteMove, lessonId) {
   const state = getState(book, history, lessonId);
