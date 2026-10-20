@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { pathToFileURL } from 'node:url';
 import g8 from '../data/g8.json' with { type: 'json' };
 import coverage from '../data/f10-coverage.json' with { type: 'json' };
+import requests from '../data/f10-requests.json' with { type: 'json' };
 import { BOOK_VERSION } from '../src/book.mjs';
 import { playChallengeHistory } from '../src/renju.mjs';
 import { screenWhite } from './f10-candidates.mjs';
@@ -12,6 +13,12 @@ export function verifyF10(onProgress = () => {}) {
   const positions = Object.entries(g8.nodes).filter(([key, node]) => key.startsWith(coverage.root) && node.turn === 2);
   assert.equal(positions.length, Object.keys(coverage.positions).length);
   assert.equal(positions.length, coverage.policy.whitePositions);
+  for (const { history, moves } of requests) {
+    const key = history.join(',');
+    assert.ok(coverage.positions[key], 'Missing explicitly requested F10 position: ' + key);
+    assert.deepEqual(coverage.positions[key].requestedMoves, moves);
+    for (const move of moves) assert.ok(g8.nodes[key]?.moves[move], 'Missing requested defense: ' + key + ' -> ' + move);
+  }
   const screens = new Map(), selections = {};
   let checked = 0, completed = 0;
   for (const [key, node] of positions) {

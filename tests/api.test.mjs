@@ -107,6 +107,22 @@ test('F10 recursively includes the new E8 and F11 counter-defenses', () => {
   assert.equal(afterF11.blackMove, 'J6');
   assert.deepEqual(afterF11.choices, ['J7', 'K6', 'I7', 'K5']);
 });
+
+test('white twenty-eight J4 and M7 after K5 end at the first L5 four-three', () => {
+  const history = 'H8 I9 I8 H7 G10 G8 F9 F10 H11 I12 H9 F11 J6 J7 K7 K8 I5 H4 E8 D7 I6 I7 L6 K6 M5 N4 K5'.split(' ');
+  assert.deepEqual(getState(book, history, 'main').choices, ['G7', 'L5', 'J4', 'M7']);
+  for (const defense of ['J4', 'M7']) {
+    const reply = advance(book, history, defense, 'main');
+    assert.equal(reply.blackMove, 'L8');
+    assert.deepEqual(reply.choices, ['M9']);
+    const end = advance(book, reply.history, 'M9', 'main');
+    assert.equal(end.blackMove, 'L5');
+    assert.equal(end.history.length, 31);
+    assert.equal(end.outcome.reason, 'four-three');
+    assert.deepEqual(end.choices, []);
+    assert.throws(() => advance(book, end.history, 'A1', 'main'), error => error.status === 409);
+  }
+});
 test('early off-line defenses enter a proved win for every remaining white reply', () => {
   const cases = [
     { id: 'j7', history: [...OPENING, 'G10', 'J7', 'G8'], reply: 'F8' }

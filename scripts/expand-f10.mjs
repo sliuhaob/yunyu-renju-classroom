@@ -10,10 +10,13 @@ import { BOOK_VERSION } from '../src/book.mjs';
 
 const root = 'H8,I9,I8,H7,G10,G8,F9,F10';
 const original = JSON.parse(fs.readFileSync('data/g8.json', 'utf8'));
+const requests = JSON.parse(fs.readFileSync('data/f10-requests.json', 'utf8'));
+const requestedMoves = new Map(requests.map(({ history, moves }) => [history.join(','), moves]));
+const requestedOnly = process.argv.includes('--requested-only');
 const nodes = {}, audit = {}, screens = new Map(), proofMoves = new Map(), mateHints = new Map();
 const engines = Array.from({ length: 4 }, () => new Rapfi()), idleEngines = [...engines], waitingEngines = [], inFlight = new Map();
 let spareLanes = engines.length - 1;
-const cachePath = 'artifacts/f10-engine-cache.json', progressPath = 'artifacts/f10-build-progress.json';
+const cachePath = 'artifacts/f10-engine-cache.json', progressPath = requestedOnly ? 'artifacts/f10-request-progress.json' : 'artifacts/f10-build-progress.json';
 let cache = fs.existsSync(cachePath) ? JSON.parse(fs.readFileSync(cachePath, 'utf8')) : {};
 let queries = 0, completed = 0;
 const engineMs = Number(process.env.F10_ENGINE_MS || 1200);
@@ -41,6 +44,10 @@ for (const [key, result] of Object.entries(cache)) rememberMateLines(key, result
 function save() {
   fs.writeFileSync(cachePath, JSON.stringify(cache));
   fs.writeFileSync(progressPath, JSON.stringify({ version: BOOK_VERSION, nodes, audit }));
+}
+if (requestedOnly) {
+  Object.assign(nodes, Object.fromEntries(Object.entries(original.nodes).filter(([key]) => key.startsWith(root))));
+  Object.assign(audit, JSON.parse(fs.readFileSync('data/f10-coverage.json', 'utf8')).positions);
 }
 if (process.env.F10_RESUME && fs.existsSync(progressPath)) {
   const saved = JSON.parse(fs.readFileSync(progressPath, 'utf8'));
@@ -93,6 +100,15 @@ async function expandDefenses(history, moves) {
   const results = await Promise.allSettled([serial, ...parallel]);
   const failure = results.find(result => result.status === 'rejected');
   if (failure) throw failure.reason;
+}
+function includeRequested(history, board, moves) {
+  const additions = requestedMoves.get(history.join(',')) || [];
+  for (const move of additions) {
+    if (history.length % 2 !== 1 || !analyzeMove(board, indexOf(move), WHITE).legal) throw new Error('Invalid requested defense: ' + history.join(',') + ' -> ' + move);
+  }
+  const combined = [...new Set([...moves, ...additions])];
+  if (combined.length > 9) throw new Error('More than nine requested/selected defenses: ' + history.join(','));
+  return combined;
 }
 async function expand(history) {
   const key = history.join(',');
@@ -157,16 +173,28 @@ async function expand(history) {
   const existing = Object.keys(original.nodes[key]?.moves || {});
   const proposal = screen.mode === 'forced' || (screen.candidates.length > 0 && screen.candidates.length <= 9)
     ? { move: null, candidates: [] } : await query(history, board, 9);
-  const moves = rankedDefenses(screen, proposal, existing);
+  const moves = includeRequested(history, board, rankedDefenses(screen, proposal, existing));
   if (!moves.length) throw new Error('No selected white defense: ' + key);
   await expandDefenses(history, moves);
   audit[key] = { mode: screen.mode, emptyPointsChecked: screen.checked, survivingPoints: screen.candidates.length,
     selection: screen.mode === 'forced' ? 'all-forced' : screen.candidates.length <= 9 && screen.candidates.length ? 'all-tactical-survivors' : screen.mode === 'unavoidable' ? 'terminal-examples' : 'engine-ranked',
-    moves, candidates: proposal.candidates.map(({ move, eval: evaluation, depth }) => ({ move, evaluation, depth })) };
+    moves, candidates: proposal.candidates.map(({ move, eval: evaluation, depth }) => ({ move, evaluation, depth })),
+    ...(requestedMoves.has(key) ? { requestedMoves: requestedMoves.get(key) } : {}) };
   put(history, moves, 'f10-expanded-defense');
 }
 try {
-  await expand(root.split(','));
+  if (requestedOnly) {
+    for (const { history, moves: additions } of requests) {
+      const key = history.join(','), parent = nodes[key];
+      if (!key.startsWith(root + ',') || !parent || !audit[key]) throw new Error('Requested parent is not a recorded F10 defense: ' + key);
+      const { board, outcome } = playChallengeHistory(history);
+      if (outcome) throw new Error('Requested parent has already ended: ' + key);
+      const moves = includeRequested(history, board, Object.keys(parent.moves));
+      await expandDefenses(history, additions);
+      audit[key] = { ...audit[key], moves, requestedMoves: additions };
+      put(history, moves, 'f10-expanded-defense');
+    }
+  } else await expand(root.split(','));
   const merged = { ...original, nodes: { ...Object.fromEntries(Object.entries(original.nodes).filter(([key]) => !key.startsWith(root))), ...nodes } };
   const published = trimG8Book(merged);
   const reachableAudit = Object.fromEntries(Object.entries(audit).filter(([key]) => published.nodes[key]));
