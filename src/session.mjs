@@ -22,6 +22,7 @@ function resolve(book, history) {
       note = cursor.proof.win ? '黑棋连成五子。复盘刚才的防守，看看进攻从哪里开始变得连续。' : '黑棋冲四。优先防住直接成五点，避免只看自己能否连三。';
       cursor = cursor.proof.win || cursor.proof.end === 'four-three' ? { type: 'done' } : { type: 'white', proof: cursor.proof };
     } else {
+      if (cursor.proof.omittedTempoFours?.includes(move)) throw new LessonError('这个冲四不能改变黑棋的获胜路线，已从练习中移除。');
       const wins = cursor.proof.threats.filter(c => c !== move);
       note = wins.length ? '这一步没有解除黑棋的全部成五威胁。' : '挡住冲四点，黑棋会继续按固定的收束手顺进攻。';
       const next = wins.length ? { move: wins[0], win: true } : cursor.proof.next;
@@ -43,7 +44,7 @@ export function getState(book, history, lessonId = 'main') {
   if (outcome || cursor.type === 'done') choices = [];
   else if (cursor.type === 'recorded') choices = Object.keys(cursor.node?.moves ?? {});
   else if (cursor.type === 'black') choices = [cursor.proof.move];
-  else choices = Array.from({ length: 225 }, (_, p) => p).filter(p => !board[p]).map(coordOf);
+  else choices = Array.from({ length: 225 }, (_, p) => p).filter(p => !board[p]).map(coordOf).filter(move => !cursor.proof.omittedTempoFours?.includes(move));
   const preferred = lesson.moves[history.length] || (history.length === lesson.moves.length ? lesson.finishDefense : undefined);
   const onLine = history.every((c, i) => c.toUpperCase() === lesson.moves[i]);
   const recorded = cursor.type === 'recorded' ? choices.filter(c => cursor.node.moves[c].kind === 'recorded') : [];

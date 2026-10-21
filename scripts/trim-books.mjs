@@ -4,6 +4,7 @@ import { pathToFileURL } from 'node:url';
 import { OPENING, BOOK_VERSION, keyOf } from '../src/book.mjs';
 import { BLACK, WHITE, playChallengeHistory, analyzeMove, indexOf } from '../src/renju.mjs';
 import { writeCompactG8 } from './compact-g8.mjs';
+import { ignoredCounterFours } from './tempo-fours.mjs';
 
 export function trimG8Book(book) {
   const nodes = {}, leaves = [], endings = { 'four-three': 0, five: 0 }, histogram = {};
@@ -38,6 +39,10 @@ function trimProof(board, proof) {
   if (result.fourThree) return { move: proof.move, end: 'four-three' };
   assert.ok(proof.threats?.length, 'Missing continuation after ' + proof.move);
   const next = { move: proof.move, threats: proof.threats };
+  board[p] = BLACK;
+  const omitted = ignoredCounterFours(board);
+  board[p] = 0;
+  if (omitted.length) next.omittedTempoFours = omitted;
   if (proof.threats.length === 1) {
     assert.ok(proof.next);
     const defend = indexOf(proof.threats[0]);
@@ -56,7 +61,17 @@ export function trimLegacyBook(book) {
     const key = keyOf(history), original = book.nodes[key];
     assert.ok(original, 'Missing recorded continuation: ' + key);
     const node = nodes[key] = { ...original, moves: {} };
+    const ignored = history.length % 2 ? ignoredCounterFours(board) : [];
+    const omitted = new Set((original.omittedTempoFours || []).filter(move => ignored.includes(move)));
+    let available = Object.keys(original.moves).length;
     for (const [move, entry] of Object.entries(original.moves)) {
+      if (ignored.includes(move)) {
+        const reply = entry.proof?.move || Object.keys(book.nodes[key + ',' + move]?.moves || {})[0];
+        const p = indexOf(move); board[p] = WHITE;
+        const ends = reply && analyzeMove(board, indexOf(reply), BLACK).win;
+        board[p] = 0;
+        if (ends && available > 1) { omitted.add(move); available--; continue; }
+      }
       if (entry.proof) {
         assert.equal(history.length % 2, 1);
         const p = indexOf(move); assert.equal(board[p], 0);
@@ -68,6 +83,8 @@ export function trimLegacyBook(book) {
         visit([...history, move]);
       }
     }
+    if (omitted.size) node.omittedTempoFours = [...omitted];
+    else delete node.omittedTempoFours;
   }
   visit(OPENING);
   return { ...book, version: BOOK_VERSION, stopCondition: 'black-four-three-or-five', nodes, proved };

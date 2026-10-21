@@ -3,6 +3,7 @@ import { pathToFileURL } from 'node:url';
 import g8 from '../data/g8.json' with { type: 'json' };
 import coverage from '../data/f10-coverage.json' with { type: 'json' };
 import requests from '../data/f10-requests.json' with { type: 'json' };
+import pruning from '../data/tempo-four-pruning.json' with { type: 'json' };
 import { BOOK_VERSION } from '../src/book.mjs';
 import { playChallengeHistory } from '../src/renju.mjs';
 import { screenWhite } from './f10-candidates.mjs';
@@ -15,9 +16,13 @@ export function verifyF10(onProgress = () => {}) {
   assert.equal(positions.length, coverage.policy.whitePositions);
   for (const { history, moves } of requests) {
     const key = history.join(',');
+    if (!coverage.positions[key]) {
+      assert.ok(history.some((move, i) => pruning.positions[history.slice(0, i).join(',')]?.some(entry => entry.move === move)), 'Requested parent vanished without a verified pruning');
+      continue;
+    }
     assert.ok(coverage.positions[key], 'Missing explicitly requested F10 position: ' + key);
     assert.deepEqual(coverage.positions[key].requestedMoves, moves);
-    for (const move of moves) assert.ok(g8.nodes[key]?.moves[move], 'Missing requested defense: ' + key + ' -> ' + move);
+    for (const move of moves) assert.ok(g8.nodes[key]?.moves[move] || pruning.positions[key]?.some(entry => entry.move === move), 'Missing requested defense: ' + key + ' -> ' + move);
   }
   const screens = new Map(), selections = {};
   let checked = 0, completed = 0;
@@ -25,6 +30,9 @@ export function verifyF10(onProgress = () => {}) {
     const entry = coverage.positions[key];
     assert.ok(entry, 'Missing recursive F10 audit: ' + key);
     assert.deepEqual(Object.keys(node.moves), entry.moves);
+    const omitted = (pruning.positions[key] || []).map(item => item.move);
+    assert.deepEqual(entry.omittedTempoFours || [], omitted);
+    const screenedMoves = [...entry.moves, ...omitted];
     const { board } = playChallengeHistory(key.split(',')), boardKey = board.join('');
     let screen = screens.get(boardKey);
     if (!screen) { screen = screenWhite(board); screens.set(boardKey, screen); }
@@ -32,11 +40,11 @@ export function verifyF10(onProgress = () => {}) {
     assert.equal(entry.emptyPointsChecked, screen.checked);
     assert.equal(entry.survivingPoints, screen.candidates.length);
     if (entry.selection === 'all-forced' || entry.selection === 'all-tactical-survivors') {
-      assert.deepEqual([...entry.moves].sort(), [...screen.candidates].sort(), 'A viable tactical defense was omitted: ' + key);
+      assert.deepEqual([...screenedMoves].sort(), [...screen.candidates].sort(), 'A viable tactical defense was omitted without a tempo-four proof: ' + key);
     } else if (entry.selection === 'engine-ranked') {
       assert.ok(screen.candidates.length > 9);
       assert.ok(entry.candidates.length > 0);
-      assert.ok(entry.moves.every(move => screen.candidates.includes(move)));
+      assert.ok(screenedMoves.every(move => screen.candidates.includes(move)));
     } else {
       assert.equal(entry.selection, 'terminal-examples');
       assert.equal(screen.candidates.length, 0);
