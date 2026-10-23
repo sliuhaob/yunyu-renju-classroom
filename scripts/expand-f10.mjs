@@ -9,7 +9,7 @@ import { BLACK, WHITE, playChallengeHistory, analyzeMove, indexOf, coordOf } fro
 import { BOOK_VERSION } from '../src/book.mjs';
 
 const branch = process.argv.find(arg => arg.startsWith('--branch='))?.split('=')[1].toUpperCase() || 'F10';
-if (!['F10', 'F11'].includes(branch)) throw new Error('Unsupported white-eight branch: ' + branch);
+if (!['F10', 'F11', 'H9'].includes(branch)) throw new Error('Unsupported white-eight branch: ' + branch);
 const label = branch.toLowerCase(), root = 'H8,I9,I8,H7,G10,G8,F9,' + branch;
 const coveragePath = `data/${label}-coverage.json`, requestsPath = `data/${label}-requests.json`;
 const original = JSON.parse(fs.readFileSync('data/g8.json', 'utf8'));
@@ -23,6 +23,8 @@ const cachePath = `artifacts/${label}-engine-cache.json`, progressPath = `artifa
 let cache = fs.existsSync(cachePath) ? JSON.parse(fs.readFileSync(cachePath, 'utf8')) : {};
 let queries = 0, completed = 0;
 const engineMs = Number(process.env[branch + '_ENGINE_MS'] || 1200);
+const rootWhiteMs = Number(process.env[branch + '_ROOT_MS'] || (branch === 'H9' ? 45000 : engineMs));
+const rootReplyMs = Number(process.env[branch + '_ROOT_REPLY_MS'] || (branch === 'H9' ? 8000 : 0));
 function rememberMateLines(cacheKey, result) {
   const [encoded, side] = cacheKey.split(':');
   for (const candidate of result.candidates || []) {
@@ -104,6 +106,24 @@ async function expandDefenses(history, moves) {
   const failure = results.find(result => result.status === 'rejected');
   if (failure) throw failure.reason;
 }
+async function refineRootProposal(history, board, proposal) {
+  // Multi-PV can overestimate resistance when one black reply has not been
+  // searched deeply enough. Refine each root candidate independently before
+  // applying the same six-ply band; keep both evaluations in the offline audit.
+  const candidates = [];
+  for (const candidate of proposal.candidates) {
+    const p = indexOf(candidate.move);
+    if (!analyzeMove(board, p, WHITE).legal) continue;
+    const next = board.slice(); next[p] = WHITE;
+    const reply = await query([...history, candidate.move], next, 1, rootReplyMs);
+    const originalMate = /^-M(\d+)$/.exec(candidate.eval);
+    const replyMate = /^\+?M(\d+)$/.exec(reply.candidates[0]?.eval || '');
+    const evaluation = originalMate && replyMate ? '-M' + Math.min(Number(originalMate[1]), Number(replyMate[1]) + 1) : candidate.eval;
+    candidates.push({ ...candidate, eval: evaluation, rootEvaluation: candidate.eval,
+      replyAnalysis: reply.candidates[0] && { move: reply.candidates[0].move, evaluation: reply.candidates[0].eval, depth: reply.candidates[0].depth } });
+  }
+  return { ...proposal, candidates };
+}
 function includeRequested(history, board, moves) {
   const additions = requestedMoves.get(history.join(',')) || [];
   for (const move of additions) {
@@ -174,14 +194,16 @@ async function expand(history) {
   let screen = screens.get(boardKey);
   if (!screen) { screen = screenWhite(board); screens.set(boardKey, screen); }
   const existing = Object.keys(original.nodes[key]?.moves || {});
-  const proposal = screen.mode === 'forced' || (screen.candidates.length > 0 && screen.candidates.length <= 9)
-    ? { move: null, candidates: [] } : await query(history, board, 9);
+  let proposal = screen.mode === 'forced' || (screen.candidates.length > 0 && screen.candidates.length <= 9)
+    ? { move: null, candidates: [] } : await query(history, board, 9, history.length === 9 ? rootWhiteMs : engineMs);
+  if (history.length === 9 && rootReplyMs && proposal.candidates.length) proposal = await refineRootProposal(history, board, proposal);
   const moves = includeRequested(history, board, rankedDefenses(screen, proposal, existing));
   if (!moves.length) throw new Error('No selected white defense: ' + key);
   await expandDefenses(history, moves);
   audit[key] = { mode: screen.mode, emptyPointsChecked: screen.checked, survivingPoints: screen.candidates.length,
     selection: screen.mode === 'forced' ? 'all-forced' : screen.candidates.length <= 9 && screen.candidates.length ? 'all-tactical-survivors' : screen.mode === 'unavoidable' ? 'terminal-examples' : 'engine-ranked',
-    moves, candidates: proposal.candidates.map(({ move, eval: evaluation, depth }) => ({ move, evaluation, depth })),
+    moves, candidates: proposal.candidates.map(({ move, eval: evaluation, depth, rootEvaluation, replyAnalysis }) => ({ move, evaluation, depth,
+      ...(rootEvaluation ? { rootEvaluation, replyAnalysis } : {}) })),
     ...(requestedMoves.has(key) ? { requestedMoves: requestedMoves.get(key) } : {}) };
   put(history, moves, label + '-expanded-defense');
 }
@@ -204,6 +226,7 @@ try {
   published.coverage = { ...published.coverage, [label]: {
     root, policy: 'All forced defenses; all one-move-loss escape points when at most nine; otherwise nine-PV engine screening with a 220-score / six-ply mate band, preserving prior viable choices. Terminal examples when no escape exists.',
     exhaustiveLegalMoves: false, whitePositions: Object.keys(reachableAudit).length,
+    ...(rootReplyMs ? { rootRefinement: { whiteSearchMs: rootWhiteMs, blackReplySearchMs: rootReplyMs, policy: 'Refine each of nine root candidates with an independent black search; use the shorter reported mate bound before applying the same six-ply band.' } } : {}),
     selections: Object.values(reachableAudit).reduce((counts, item) => { counts[item.selection] = (counts[item.selection] || 0) + 1; return counts; }, {})
   } };
   console.log('Verified', JSON.stringify(verifyG8(published)));

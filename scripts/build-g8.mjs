@@ -160,7 +160,7 @@ try {
   let published = trimG8Book(output);
   // Adding a requested branch elsewhere must not replace the recursively
   // expanded strategies with the older three-candidate seed generator.
-  for (const label of ['f10', 'f11']) if (previousBook.coverage?.[label]) {
+  for (const label of ['f10', 'f11', 'h9']) if (previousBook.coverage?.[label]) {
     const root = previousBook.coverage[label].root;
     published = trimG8Book({ ...published, coverage: previousBook.coverage, nodes: {
       ...Object.fromEntries(Object.entries(published.nodes).filter(([key]) => !key.startsWith(root))),

@@ -145,6 +145,20 @@ test('white eight F11 expands all three first defenses and their viable continua
   assert.equal(afterD7.blackMove, 'F7');
   assert.deepEqual(afterD7.choices, ['G6']);
 });
+test('white ten after H9 F10 exposes every selected defense and each continues to a legal end', () => {
+  const first = advance(book, [...OPENING, 'G10', 'G8', 'F9'], 'H9', 'main');
+  assert.equal(first.blackMove, 'F10');
+  assert.deepEqual(first.choices, ['F7', 'J9', 'K9', 'E8', 'I10', 'H11', 'F11', 'E11', 'J11']);
+  for (const defense of first.choices) {
+    let state = advance(book, first.history, defense, 'main');
+    while (!state.outcome && state.history.length < 69) state = advance(book, state.history, state.choices[0], 'main');
+    assert.equal(state.outcome?.winner, 1, defense);
+    assert.ok(['four-three', 'five'].includes(state.outcome.reason));
+    assert.deepEqual(state.choices, []);
+    assert.throws(() => advance(book, state.history, 'A1', 'main'), error => error.status === 409);
+  }
+});
+
 test('early off-line defenses enter a proved win for every remaining white reply', () => {
   const cases = [
     { id: 'j7', history: [...OPENING, 'G10', 'J7', 'G8'], reply: 'F8' }

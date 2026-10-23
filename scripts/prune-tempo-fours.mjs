@@ -58,7 +58,7 @@ return { book: published, proof: { version: BOOK_VERSION, format: 'omitted-four-
 }
 
 let book = JSON.parse(fs.readFileSync('data/g8.json', 'utf8'));
-const coverages = Object.fromEntries(['f10', 'f11'].filter(label => fs.existsSync(`data/${label}-coverage.json`))
+const coverages = Object.fromEntries(['f10', 'f11', 'h9'].filter(label => fs.existsSync(`data/${label}-coverage.json`))
   .map(label => [label, JSON.parse(fs.readFileSync(`data/${label}-coverage.json`, 'utf8'))]));
 let proof = fs.existsSync(proofPath) ? JSON.parse(fs.readFileSync(proofPath, 'utf8')) : { nodes: [], positions: {} };
 let removed = 0, pass;

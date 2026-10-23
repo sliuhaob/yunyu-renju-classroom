@@ -35,3 +35,12 @@ test('F11 applies the same full tactical screen to every first defense', () => {
     assert.deepEqual([...board], before);
   }
 });
+
+test('H9 E8 defense retains both responses to the new F11 vertical threat', () => {
+  const { board } = playChallengeHistory('H8 I9 I8 H7 G10 G8 F9 H9 F10 E8 F11'.split(' '));
+  const before = [...board], screened = screenWhite(board);
+  assert.equal(screened.mode, 'defense');
+  assert.equal(screened.checked, 214);
+  assert.deepEqual(screened.candidates, ['F12', 'F8']);
+  assert.deepEqual([...board], before);
+});
