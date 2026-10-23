@@ -159,14 +159,14 @@ try {
   }};
   let published = trimG8Book(output);
   // Adding a requested branch elsewhere must not replace the recursively
-  // expanded F10 strategy with the older three-candidate seed generator.
-  if (previousBook.coverage?.f10) {
-    const root = previousBook.coverage.f10.root;
+  // expanded strategies with the older three-candidate seed generator.
+  for (const label of ['f10', 'f11']) if (previousBook.coverage?.[label]) {
+    const root = previousBook.coverage[label].root;
     published = trimG8Book({ ...published, coverage: previousBook.coverage, nodes: {
       ...Object.fromEntries(Object.entries(published.nodes).filter(([key]) => !key.startsWith(root))),
       ...Object.fromEntries(Object.entries(previousBook.nodes).filter(([key]) => key.startsWith(root)))
     } });
-    const coveragePath = new URL('../data/f10-coverage.json', import.meta.url);
+    const coveragePath = new URL(`../data/${label}-coverage.json`, import.meta.url);
     const coverage = JSON.parse(await readFile(coveragePath));
     coverage.version = BOOK_VERSION;
     await writeFile(coveragePath, JSON.stringify(coverage));

@@ -8,18 +8,21 @@ import { immediateFinish, screenWhite, rankedDefenses } from './f10-candidates.m
 import { BLACK, WHITE, playChallengeHistory, analyzeMove, indexOf, coordOf } from '../src/renju.mjs';
 import { BOOK_VERSION } from '../src/book.mjs';
 
-const root = 'H8,I9,I8,H7,G10,G8,F9,F10';
+const branch = process.argv.find(arg => arg.startsWith('--branch='))?.split('=')[1].toUpperCase() || 'F10';
+if (!['F10', 'F11'].includes(branch)) throw new Error('Unsupported white-eight branch: ' + branch);
+const label = branch.toLowerCase(), root = 'H8,I9,I8,H7,G10,G8,F9,' + branch;
+const coveragePath = `data/${label}-coverage.json`, requestsPath = `data/${label}-requests.json`;
 const original = JSON.parse(fs.readFileSync('data/g8.json', 'utf8'));
-const requests = JSON.parse(fs.readFileSync('data/f10-requests.json', 'utf8'));
+const requests = fs.existsSync(requestsPath) ? JSON.parse(fs.readFileSync(requestsPath, 'utf8')) : [];
 const requestedMoves = new Map(requests.map(({ history, moves }) => [history.join(','), moves]));
 const requestedOnly = process.argv.includes('--requested-only');
 const nodes = {}, audit = {}, screens = new Map(), proofMoves = new Map(), mateHints = new Map();
 const engines = Array.from({ length: 4 }, () => new Rapfi()), idleEngines = [...engines], waitingEngines = [], inFlight = new Map();
 let spareLanes = engines.length - 1;
-const cachePath = 'artifacts/f10-engine-cache.json', progressPath = requestedOnly ? 'artifacts/f10-request-progress.json' : 'artifacts/f10-build-progress.json';
+const cachePath = `artifacts/${label}-engine-cache.json`, progressPath = `artifacts/${label}-${requestedOnly ? 'request' : 'build'}-progress.json`;
 let cache = fs.existsSync(cachePath) ? JSON.parse(fs.readFileSync(cachePath, 'utf8')) : {};
 let queries = 0, completed = 0;
-const engineMs = Number(process.env.F10_ENGINE_MS || 1200);
+const engineMs = Number(process.env[branch + '_ENGINE_MS'] || 1200);
 function rememberMateLines(cacheKey, result) {
   const [encoded, side] = cacheKey.split(':');
   for (const candidate of result.candidates || []) {
@@ -47,13 +50,13 @@ function save() {
 }
 if (requestedOnly) {
   Object.assign(nodes, Object.fromEntries(Object.entries(original.nodes).filter(([key]) => key.startsWith(root))));
-  Object.assign(audit, JSON.parse(fs.readFileSync('data/f10-coverage.json', 'utf8')).positions);
+  Object.assign(audit, JSON.parse(fs.readFileSync(coveragePath, 'utf8')).positions);
 }
-if (process.env.F10_RESUME && fs.existsSync(progressPath)) {
+if (process.env[branch + '_RESUME'] && fs.existsSync(progressPath)) {
   const saved = JSON.parse(fs.readFileSync(progressPath, 'utf8'));
   if (saved.version === BOOK_VERSION) { Object.assign(nodes, saved.nodes); Object.assign(audit, saved.audit); }
 }
-if (process.env.F10_REFINE_EARLY) {
+if (process.env[branch + '_REFINE_EARLY']) {
   // Revisit early decisions after stronger searches without discarding closed
   // later continuations that still match the chosen move sequence.
   for (const key of Object.keys(nodes)) if (key.split(',').length <= 22) { delete nodes[key]; delete audit[key]; }
@@ -180,25 +183,25 @@ async function expand(history) {
     selection: screen.mode === 'forced' ? 'all-forced' : screen.candidates.length <= 9 && screen.candidates.length ? 'all-tactical-survivors' : screen.mode === 'unavoidable' ? 'terminal-examples' : 'engine-ranked',
     moves, candidates: proposal.candidates.map(({ move, eval: evaluation, depth }) => ({ move, evaluation, depth })),
     ...(requestedMoves.has(key) ? { requestedMoves: requestedMoves.get(key) } : {}) };
-  put(history, moves, 'f10-expanded-defense');
+  put(history, moves, label + '-expanded-defense');
 }
 try {
   if (requestedOnly) {
     for (const { history, moves: additions } of requests) {
       const key = history.join(','), parent = nodes[key];
-      if (!key.startsWith(root + ',') || !parent || !audit[key]) throw new Error('Requested parent is not a recorded F10 defense: ' + key);
+      if (!key.startsWith(root + ',') || !parent || !audit[key]) throw new Error('Requested parent is not a recorded ' + branch + ' defense: ' + key);
       const { board, outcome } = playChallengeHistory(history);
       if (outcome) throw new Error('Requested parent has already ended: ' + key);
       const moves = includeRequested(history, board, Object.keys(parent.moves));
       await expandDefenses(history, additions);
       audit[key] = { ...audit[key], moves, requestedMoves: additions };
-      put(history, moves, 'f10-expanded-defense');
+      put(history, moves, label + '-expanded-defense');
     }
   } else await expand(root.split(','));
   const merged = { ...original, nodes: { ...Object.fromEntries(Object.entries(original.nodes).filter(([key]) => !key.startsWith(root))), ...nodes } };
   const published = trimG8Book(merged);
   const reachableAudit = Object.fromEntries(Object.entries(audit).filter(([key]) => published.nodes[key]));
-  published.coverage = { ...published.coverage, f10: {
+  published.coverage = { ...published.coverage, [label]: {
     root, policy: 'All forced defenses; all one-move-loss escape points when at most nine; otherwise nine-PV engine screening with a 220-score / six-ply mate band, preserving prior viable choices. Terminal examples when no escape exists.',
     exhaustiveLegalMoves: false, whitePositions: Object.keys(reachableAudit).length,
     selections: Object.values(reachableAudit).reduce((counts, item) => { counts[item.selection] = (counts[item.selection] || 0) + 1; return counts; }, {})
@@ -206,6 +209,6 @@ try {
   console.log('Verified', JSON.stringify(verifyG8(published)));
   fs.writeFileSync('data/g8.json', JSON.stringify(published));
   writeCompactG8(published);
-  fs.writeFileSync('data/f10-coverage.json', JSON.stringify({ version: BOOK_VERSION, root, policy: published.coverage.f10, positions: reachableAudit }));
-  console.log('F10 coverage', JSON.stringify(published.coverage.f10));
+  fs.writeFileSync(coveragePath, JSON.stringify({ version: BOOK_VERSION, root, policy: published.coverage[label], positions: reachableAudit }));
+  console.log(branch + ' coverage', JSON.stringify(published.coverage[label]));
 } finally { save(); for (const engine of engines) engine.close(); }

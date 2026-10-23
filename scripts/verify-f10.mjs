@@ -9,9 +9,16 @@ import { playChallengeHistory } from '../src/renju.mjs';
 import { screenWhite } from './f10-candidates.mjs';
 
 export function verifyF10(onProgress = () => {}) {
+  assert.equal(coverage.root, 'H8,I9,I8,H7,G10,G8,F9,F10');
+  return verifyExpandedBranch(coverage, requests, onProgress);
+}
+
+export function verifyExpandedBranch(coverage, requests = [], onProgress = () => {}) {
   assert.equal(coverage.version, BOOK_VERSION);
+  const label = coverage.root.split(',').at(-1).toLowerCase();
+  assert.deepEqual(coverage.policy, g8.coverage[label]);
   assert.equal(coverage.policy.exhaustiveLegalMoves, false);
-  const positions = Object.entries(g8.nodes).filter(([key, node]) => key.startsWith(coverage.root) && node.turn === 2);
+  const positions = Object.entries(g8.nodes).filter(([key, node]) => key.startsWith(coverage.root + ',') && node.turn === 2);
   assert.equal(positions.length, Object.keys(coverage.positions).length);
   assert.equal(positions.length, coverage.policy.whitePositions);
   for (const { history, moves } of requests) {
@@ -20,7 +27,7 @@ export function verifyF10(onProgress = () => {}) {
       assert.ok(history.some((move, i) => pruning.positions[history.slice(0, i).join(',')]?.some(entry => entry.move === move)), 'Requested parent vanished without a verified pruning');
       continue;
     }
-    assert.ok(coverage.positions[key], 'Missing explicitly requested F10 position: ' + key);
+    assert.ok(coverage.positions[key], 'Missing explicitly requested defense position: ' + key);
     assert.deepEqual(coverage.positions[key].requestedMoves, moves);
     for (const move of moves) assert.ok(g8.nodes[key]?.moves[move] || pruning.positions[key]?.some(entry => entry.move === move), 'Missing requested defense: ' + key + ' -> ' + move);
   }
@@ -28,7 +35,7 @@ export function verifyF10(onProgress = () => {}) {
   let checked = 0, completed = 0;
   for (const [key, node] of positions) {
     const entry = coverage.positions[key];
-    assert.ok(entry, 'Missing recursive F10 audit: ' + key);
+    assert.ok(entry, 'Missing recursive defense audit: ' + key);
     assert.deepEqual(Object.keys(node.moves), entry.moves);
     const omitted = (pruning.positions[key] || []).map(item => item.move);
     assert.deepEqual(entry.omittedTempoFours || [], omitted);

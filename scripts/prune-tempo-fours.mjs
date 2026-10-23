@@ -6,7 +6,7 @@ import { trimG8Book, trimLegacyBook } from './trim-books.mjs';
 import { continuationVerifier, boardOf, findRedundantFours } from './tempo-fours.mjs';
 
 const proofPath = 'data/tempo-four-pruning.json';
-function prunePass(book, coverage, previous) {
+function prunePass(book, coverages, previous) {
 const graph = compactG8(book), replay = continuationVerifier(graph.nodes), positions = {}, nodes = [], ids = new Map();
 function copyProof(source, id, prefix) {
   const key = prefix + ':' + id;
@@ -29,7 +29,7 @@ function visit(history, id) {
       ...omissions.map(item => ({ ...item, suffix: copyProof(graph.nodes, item.suffix, 'new') }))
     ];
     if (proofs.length) positions[key] = proofs;
-    if (coverage.positions[key]) {
+    for (const coverage of Object.values(coverages)) if (coverage.positions[key]) {
       coverage.positions[key].moves = Object.keys(node.moves);
       if (proofs.length) coverage.positions[key].omittedTempoFours = proofs.map(item => item.move);
       else delete coverage.positions[key].omittedTempoFours;
@@ -44,29 +44,32 @@ function visit(history, id) {
 }
 visit(OPENING, graph.root);
 const published = trimG8Book(book);
+for (const [label, coverage] of Object.entries(coverages)) {
 coverage.positions = Object.fromEntries(Object.entries(coverage.positions).filter(([key]) => published.nodes[key]));
 coverage.version = BOOK_VERSION;
 coverage.policy = { ...coverage.policy,
   whitePositions: Object.keys(coverage.positions).length,
   tempoFourPolicy: 'Omit a nonessential white four only when the identical full recorded continuation remains legal and wins both with and without its forced white-four/black-block exchange. Preserve forced defenses and at least one choice.',
   selections: Object.values(coverage.positions).reduce((r, p) => { r[p.selection] = (r[p.selection] || 0) + 1; return r; }, {}) };
-published.coverage.f10 = coverage.policy;
+published.coverage[label] = coverage.policy;
+}
 published.coverage.tempoFourPruning = { positions: Object.keys(positions).length, removedChoices: Object.values(positions).reduce((n, entries) => n + entries.length, 0) };
 return { book: published, proof: { version: BOOK_VERSION, format: 'omitted-four-replay-v1', nodes, positions }, removed };
 }
 
 let book = JSON.parse(fs.readFileSync('data/g8.json', 'utf8'));
-const coverage = JSON.parse(fs.readFileSync('data/f10-coverage.json', 'utf8'));
+const coverages = Object.fromEntries(['f10', 'f11'].filter(label => fs.existsSync(`data/${label}-coverage.json`))
+  .map(label => [label, JSON.parse(fs.readFileSync(`data/${label}-coverage.json`, 'utf8'))]));
 let proof = fs.existsSync(proofPath) ? JSON.parse(fs.readFileSync(proofPath, 'utf8')) : { nodes: [], positions: {} };
 let removed = 0, pass;
 do {
-  pass = prunePass(book, coverage, proof);
+  pass = prunePass(book, coverages, proof);
   book = pass.book; proof = pass.proof; removed += pass.removed;
   console.log('Pruning pass', { removed: pass.removed, positions: book.stats.positions });
 } while (pass.removed);
 fs.writeFileSync('data/g8.json', JSON.stringify(book));
 const compact = writeCompactG8(book);
-fs.writeFileSync('data/f10-coverage.json', JSON.stringify(coverage));
+for (const [label, coverage] of Object.entries(coverages)) fs.writeFileSync(`data/${label}-coverage.json`, JSON.stringify(coverage));
 fs.writeFileSync(proofPath, JSON.stringify(proof));
 const legacy = trimLegacyBook(JSON.parse(fs.readFileSync('data/responses.json', 'utf8')));
 fs.writeFileSync('data/responses.json', JSON.stringify(legacy));
