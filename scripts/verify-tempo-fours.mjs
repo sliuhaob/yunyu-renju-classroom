@@ -3,12 +3,29 @@ import { pathToFileURL } from 'node:url';
 import g8 from '../data/g8.json' with { type: 'json' };
 import proof from '../data/tempo-four-pruning.json' with { type: 'json' };
 import { BOOK_VERSION } from '../src/book.mjs';
-import { WHITE, playChallengeHistory } from '../src/renju.mjs';
-import { continuationVerifier, redundantFour } from './tempo-fours.mjs';
+import { WHITE, coordOf, playChallengeHistory } from '../src/renju.mjs';
+import { continuationVerifier, redundantFour, findRedundantFours, boardOf, follow } from './tempo-fours.mjs';
+import { compactG8 } from './compact-g8.mjs';
+
+export function verifyGraftedMenu(key, replay) {
+  const id = proof.replays[key], node = g8.nodes[key], row = proof.nodes[id];
+  assert.ok(row && node?.turn === WHITE, 'Missing graft evidence: ' + key);
+  assert.ok(replay(boardOf(key.split(',')), id), 'Grafted strategy no longer wins: ' + key);
+  const omitted = new Set((proof.positions[key] || []).map(item => item.move));
+  const moves = row.filter((_, i) => i % 2 === 1).map(coordOf).filter(move => !omitted.has(move));
+  assert.deepEqual(Object.keys(node.moves), moves, 'Grafted menu differs from its verified suffix: ' + key);
+  for (let i = 1; i < row.length; i += 2) {
+    const move = coordOf(row[i]);
+    if (omitted.has(move)) continue;
+    const black = proof.nodes[row[i + 1]];
+    assert.equal(black?.length, 3);
+    assert.deepEqual(Object.keys(g8.nodes[key + ',' + move]?.moves || {}), [coordOf(black[1])], 'Grafted black reply changed');
+  }
+}
 
 export function verifyTempoFours() {
   assert.equal(proof.version, BOOK_VERSION);
-  assert.equal(proof.format, 'omitted-four-replay-v1');
+  assert.equal(proof.format, 'omitted-four-replay-v2');
   const replay = continuationVerifier(proof.nodes);
   let removedChoices = 0;
   for (const [key, entries] of Object.entries(proof.positions)) {
@@ -26,7 +43,17 @@ export function verifyTempoFours() {
       removedChoices++;
     }
   }
-  const result = { positions: Object.keys(proof.positions).length, removedChoices };
+  for (const key of Object.keys(proof.replays)) verifyGraftedMenu(key, replay);
+  // Check completeness too: the former singleton safeguard escaped the old
+  // verifier, which only inspected already-deleted choices.
+  const graph = compactG8(g8), remaining = continuationVerifier(graph.nodes);
+  for (const [key, node] of Object.entries(g8.nodes)) if (node.turn === WHITE) {
+    const history = key.split(','), id = follow(graph.nodes, graph.root, history);
+    assert.deepEqual(findRedundantFours(boardOf(history), graph.nodes[id], graph.nodes, remaining), [], 'Unnecessary four still offered: ' + key);
+  }
+  const result = { positions: Object.keys(proof.positions).length, removedChoices,
+    graftedExchanges: Object.values(proof.positions).flat().filter(item => item.grafted).length,
+    replayedPositions: Object.keys(proof.replays).length };
   assert.deepEqual(g8.coverage.tempoFourPruning, result);
   return result;
 }

@@ -7,6 +7,8 @@ import pruning from '../data/tempo-four-pruning.json' with { type: 'json' };
 import { BOOK_VERSION } from '../src/book.mjs';
 import { playChallengeHistory } from '../src/renju.mjs';
 import { screenWhite } from './f10-candidates.mjs';
+import { continuationVerifier } from './tempo-fours.mjs';
+import { verifyGraftedMenu } from './verify-tempo-fours.mjs';
 
 export function verifyF10(onProgress = () => {}) {
   assert.equal(coverage.root, 'H8,I9,I8,H7,G10,G8,F9,F10');
@@ -31,7 +33,7 @@ export function verifyExpandedBranch(coverage, requests = [], onProgress = () =>
     assert.deepEqual(coverage.positions[key].requestedMoves, moves);
     for (const move of moves) assert.ok(g8.nodes[key]?.moves[move] || pruning.positions[key]?.some(entry => entry.move === move), 'Missing requested defense: ' + key + ' -> ' + move);
   }
-  const screens = new Map(), selections = {};
+  const screens = new Map(), selections = {}, replay = continuationVerifier(pruning.nodes);
   let checked = 0, completed = 0;
   for (const [key, node] of positions) {
     const entry = coverage.positions[key];
@@ -46,7 +48,9 @@ export function verifyExpandedBranch(coverage, requests = [], onProgress = () =>
     assert.equal(entry.mode, screen.mode);
     assert.equal(entry.emptyPointsChecked, screen.checked);
     assert.equal(entry.survivingPoints, screen.candidates.length);
-    if (entry.selection === 'all-forced' || entry.selection === 'all-tactical-survivors') {
+    if (entry.selection === 'tempo-replay') {
+      verifyGraftedMenu(key, replay);
+    } else if (entry.selection === 'all-forced' || entry.selection === 'all-tactical-survivors') {
       assert.deepEqual([...screenedMoves].sort(), [...screen.candidates].sort(), 'A viable tactical defense was omitted without a tempo-four proof: ' + key);
     } else if (entry.selection === 'engine-ranked') {
       assert.ok(screen.candidates.length > 9);

@@ -78,7 +78,7 @@ export function ignoredCounterFours(board) {
 }
 
 export function findRedundantFours(board, row, nodes, replay) {
-  if (!row || row.length <= 3 || winningMoves(board, BLACK).length) return [];
+  if (!row || row.length < 3 || winningMoves(board, BLACK).length) return [];
   const found = [];
   for (let i = 1; i < row.length; i += 2) {
     const black = nodes[row[i + 1]];
@@ -86,11 +86,7 @@ export function findRedundantFours(board, row, nodes, replay) {
     const move = coordOf(row[i]), reply = coordOf(black[1]), suffix = black[2];
     if (redundantFour(board, move, reply, suffix, replay)) found.push({ move, reply, suffix });
   }
-  // A white turn must still have a continuation. If every option is a tempo
-  // four, keep the shortest existing example (stable candidate order on ties).
-  if (found.length === (row.length - 1) / 2) {
-    const keep = found.reduce((a, b) => nodes[a.suffix][0] <= nodes[b.suffix][0] ? a : b);
-    return found.filter(item => item !== keep);
-  }
+  // Include singleton/all-redundant menus. The caller must graft a verified
+  // suffix in their place instead of keeping a pointless exchange or an empty menu.
   return found;
 }
