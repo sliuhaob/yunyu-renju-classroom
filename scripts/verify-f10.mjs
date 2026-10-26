@@ -4,6 +4,7 @@ import g8 from '../data/g8.json' with { type: 'json' };
 import coverage from '../data/f10-coverage.json' with { type: 'json' };
 import requests from '../data/f10-requests.json' with { type: 'json' };
 import pruning from '../data/tempo-four-pruning.json' with { type: 'json' };
+import opposite from '../data/double-four-three-coverage.json' with { type: 'json' };
 import { BOOK_VERSION } from '../src/book.mjs';
 import { playChallengeHistory } from '../src/renju.mjs';
 import { screenWhite } from './f10-candidates.mjs';
@@ -41,7 +42,9 @@ export function verifyExpandedBranch(coverage, requests = [], onProgress = () =>
     assert.deepEqual(Object.keys(node.moves), entry.moves);
     const omitted = (pruning.positions[key] || []).map(item => item.move);
     assert.deepEqual(entry.omittedTempoFours || [], omitted);
-    const screenedMoves = [...entry.moves, ...omitted];
+    const added = (opposite.positions[key]?.added || []).map(item => item.move);
+    assert.deepEqual(entry.oppositeFourThreeMoves || [], added);
+    const screenedMoves = [...entry.moves.filter(move => !added.includes(move)), ...omitted];
     const { board } = playChallengeHistory(key.split(',')), boardKey = board.join('');
     let screen = screens.get(boardKey);
     if (!screen) { screen = screenWhite(board); screens.set(boardKey, screen); }

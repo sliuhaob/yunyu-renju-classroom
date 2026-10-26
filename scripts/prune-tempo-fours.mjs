@@ -7,6 +7,7 @@ import { compactG8, writeCompactG8 } from './compact-g8.mjs';
 import { trimG8Book, trimLegacyBook } from './trim-books.mjs';
 import { continuationVerifier, boardOf, findRedundantFours } from './tempo-fours.mjs';
 import { screenWhite } from './f10-candidates.mjs';
+import { fillFourThreeSides } from './augment-double-four-three.mjs';
 
 const proofPath = 'data/tempo-four-pruning.json';
 
@@ -123,6 +124,11 @@ function main() {
     delete entry.needsScreen;
     if (++screened % 1000 === 0) console.log('Replayed coverage screened', screened);
   }
+  // Complete both attack sides after trimming/grafting so rebuilding the book
+  // cannot bring back the former one-sided terminal-example menus.
+  const opposite = fillFourThreeSides(book, coverages, p => console.log('Four-three coverage', p));
+  book = opposite.book; coverages = opposite.coverages;
+  fs.writeFileSync('data/double-four-three-coverage.json', JSON.stringify(opposite.proof));
   fs.writeFileSync('data/g8.json', JSON.stringify(book));
   const compact = writeCompactG8(book);
   for (const [label, coverage] of Object.entries(coverages)) fs.writeFileSync(`data/${label}-coverage.json`, JSON.stringify(coverage));

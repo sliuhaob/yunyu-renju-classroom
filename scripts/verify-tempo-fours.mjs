@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { pathToFileURL } from 'node:url';
 import g8 from '../data/g8.json' with { type: 'json' };
 import proof from '../data/tempo-four-pruning.json' with { type: 'json' };
+import opposite from '../data/double-four-three-coverage.json' with { type: 'json' };
 import { BOOK_VERSION } from '../src/book.mjs';
 import { WHITE, coordOf, playChallengeHistory } from '../src/renju.mjs';
 import { continuationVerifier, redundantFour, findRedundantFours, boardOf, follow } from './tempo-fours.mjs';
@@ -13,7 +14,9 @@ export function verifyGraftedMenu(key, replay) {
   assert.ok(replay(boardOf(key.split(',')), id), 'Grafted strategy no longer wins: ' + key);
   const omitted = new Set((proof.positions[key] || []).map(item => item.move));
   const moves = row.filter((_, i) => i % 2 === 1).map(coordOf).filter(move => !omitted.has(move));
-  assert.deepEqual(Object.keys(node.moves), moves, 'Grafted menu differs from its verified suffix: ' + key);
+  const added = new Set((opposite.positions[key]?.added || []).map(item => item.move));
+  // Opposite-side blocks have their own independent immediate-finish proof.
+  assert.deepEqual(Object.keys(node.moves).filter(move => !added.has(move)), moves, 'Grafted menu differs from its verified suffix: ' + key);
   for (let i = 1; i < row.length; i += 2) {
     const move = coordOf(row[i]);
     if (omitted.has(move)) continue;
