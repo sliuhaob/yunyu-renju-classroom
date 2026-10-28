@@ -20,9 +20,9 @@ export function compactG8(book) {
   const root = visit(book.opening);
   return { version: book.version, format: 'continuation-dag-v1', root, nodes, stats: book.stats };
 }
-export function writeCompactG8(book) {
+export function writeCompactG8(book, label = 'g8') {
   const compact = compactG8(book);
-  fs.writeFileSync(new URL('../data/g8-runtime.json', import.meta.url), JSON.stringify(compact));
+  fs.writeFileSync(new URL(`../data/${label}-runtime.json`, import.meta.url), JSON.stringify(compact));
   return compact;
 }
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

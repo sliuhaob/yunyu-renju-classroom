@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import book from '../data/responses.json' with { type: 'json' };
 import graph from '../data/g8-runtime.json' with { type: 'json' };
 import proof from '../data/tempo-four-pruning.json' with { type: 'json' };
-import { getState, advance } from '../src/session.mjs';
+import { getState, getLegacyState, advance } from '../src/session.mjs';
 import { BLACK, WHITE, analyzeMove, indexOf, winningMoves } from '../src/renju.mjs';
 import { boardOf, follow, continuationVerifier, redundantFour, ignoredCounterFours } from '../scripts/tempo-fours.mjs';
 import { prunePass } from '../scripts/prune-tempo-fours.mjs';
@@ -98,10 +98,10 @@ test('a counter-four that also blocks black five is preserved', () => {
 test('legacy counter-four which ignores black five is removed from menu and replay', () => {
   const h = 'H8 I9 I8 H7 G10 J7 G8 J8 H11 F8 F9 I12 G11 G9 F11 I11 D11'.split(' ');
   assert.ok(ignoredCounterFours(boardOf(h)).includes('I13'));
-  assert.ok(!getState(book, h, 'j7').choices.includes('I13'));
-  assert.throws(() => advance(book, h, 'I13', 'j7'), error => error.code === 'OUT_OF_BOOK');
-  assert.throws(() => getState(book, [...h, 'I13'], 'j7'), error => error.code === 'OUT_OF_BOOK');
-  assert.ok(getState(book, h, 'j7').choices.includes('E11'));
+  assert.ok(!getLegacyState(book, h, 'j7').choices.includes('I13'));
+  assert.throws(() => getLegacyState(book, [...h, 'I13'], 'j7'), error => error.code === 'OUT_OF_BOOK');
+  assert.throws(() => getLegacyState(book, [...h, 'I13'], 'j7'), error => error.code === 'OUT_OF_BOOK');
+  assert.ok(getLegacyState(book, h, 'j7').choices.includes('E11'));
 });
 
 test('legacy compressed proof menus and forged histories reject their omitted counter-fours', () => {
@@ -113,9 +113,9 @@ test('legacy compressed proof menus and forged histories reject their omitted co
       const b = boardOf(after); b[indexOf(w)] = WHITE;
       assert.ok(winningMoves(b, WHITE).length);
       assert.ok(winningMoves(b, BLACK).some(q => analyzeMove(b, q, BLACK).win));
-      assert.ok(!getState(book, after, 'j7').choices.includes(w));
-      assert.throws(() => advance(book, after, w, 'j7'), error => error.code === 'OUT_OF_BOOK');
-      assert.throws(() => getState(book, [...after, w], 'j7'), error => error.code === 'OUT_OF_BOOK');
+      assert.ok(!getLegacyState(book, after, 'j7').choices.includes(w));
+      assert.throws(() => getLegacyState(book, [...after, w], 'j7'), error => error.code === 'OUT_OF_BOOK');
+      assert.throws(() => getLegacyState(book, [...after, w], 'j7'), error => error.code === 'OUT_OF_BOOK');
       checked++;
     }
     if (p.next) visit([...after, p.threats[0]], p.next);

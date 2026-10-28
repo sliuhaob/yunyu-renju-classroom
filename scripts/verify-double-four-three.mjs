@@ -9,7 +9,8 @@ import { boardOf } from './tempo-fours.mjs';
 import { fourThreeDefenses, missingFourThreeSides } from './double-four-three.mjs';
 import { OPPOSITE_KIND, oppositePolicy } from './augment-double-four-three.mjs';
 
-export function verifyOppositeSides(progress = () => {}) {
+export function verifyOppositeSides(progress = () => {}, tree = g8, evidence = proof, legacyBook = legacy) {
+  const g8 = tree, proof = evidence;
   assert.equal(proof.version, BOOK_VERSION);
   assert.equal(proof.format, 'opposite-four-three-v1');
   assert.equal(proof.policy, oppositePolicy);
@@ -62,7 +63,7 @@ export function verifyOppositeSides(progress = () => {}) {
   // Legacy compressed VCF turns already have an immediate black-five threat;
   // inspect the remaining explicitly recorded J7 white decisions too.
   let legacyPositions = 0;
-  for (const [key, node] of Object.entries(legacy.nodes)) {
+  for (const [key, node] of Object.entries(legacyBook.nodes)) {
     const h = key.split(',');
     if (h[5] !== 'J7' || h.length % 2 !== 1) continue;
     legacyPositions++;

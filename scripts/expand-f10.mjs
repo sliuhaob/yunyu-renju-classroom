@@ -6,13 +6,23 @@ import { writeCompactG8 } from './compact-g8.mjs';
 import { verifyG8 } from './verify-g8.mjs';
 import { immediateFinish, screenWhite, rankedDefenses } from './f10-candidates.mjs';
 import { BLACK, WHITE, playChallengeHistory, analyzeMove, indexOf, coordOf } from '../src/renju.mjs';
-import { BOOK_VERSION } from '../src/book.mjs';
+import { BOOK_VERSION, OPENING, LESSONS } from '../src/book.mjs';
 
 const branch = process.argv.find(arg => arg.startsWith('--branch='))?.split('=')[1].toUpperCase() || 'F10';
-if (!['F10', 'F11', 'H9'].includes(branch)) throw new Error('Unsupported white-eight branch: ' + branch);
-const label = branch.toLowerCase(), root = 'H8,I9,I8,H7,G10,G8,F9,' + branch;
+if (!['F10', 'F11', 'H9', 'J7'].includes(branch)) throw new Error('Unsupported branch: ' + branch);
+const label = branch.toLowerCase(), isJ7 = branch === 'J7';
+const root = isJ7 ? 'H8,I9,I8,H7,G10,J7' : 'H8,I9,I8,H7,G10,G8,F9,' + branch;
+const rootWhitePly = root.split(',').length + 1;
+const bookPath = isJ7 ? 'data/j7.json' : 'data/g8.json';
 const coveragePath = `data/${label}-coverage.json`, requestsPath = `data/${label}-requests.json`;
-const original = JSON.parse(fs.readFileSync('data/g8.json', 'utf8'));
+function seedJ7() {
+  const moves = LESSONS.find(lesson => lesson.id === 'j7').moves, nodes = {};
+  for (let n = 4; n < moves.length; n++) nodes[moves.slice(0, n).join(',')] = {
+    turn: n % 2 ? WHITE : BLACK, moves: { [moves[n]]: { kind: 'recorded' } }
+  };
+  return { opening: OPENING, nodes, coverage: {} };
+}
+const original = fs.existsSync(bookPath) ? JSON.parse(fs.readFileSync(bookPath, 'utf8')) : seedJ7();
 const requests = fs.existsSync(requestsPath) ? JSON.parse(fs.readFileSync(requestsPath, 'utf8')) : [];
 const requestedMoves = new Map(requests.map(({ history, moves }) => [history.join(','), moves]));
 const requestedOnly = process.argv.includes('--requested-only');
@@ -23,8 +33,8 @@ const cachePath = `artifacts/${label}-engine-cache.json`, progressPath = `artifa
 let cache = fs.existsSync(cachePath) ? JSON.parse(fs.readFileSync(cachePath, 'utf8')) : {};
 let queries = 0, completed = 0;
 const engineMs = Number(process.env[branch + '_ENGINE_MS'] || 1200);
-const rootWhiteMs = Number(process.env[branch + '_ROOT_MS'] || (branch === 'H9' ? 45000 : engineMs));
-const rootReplyMs = Number(process.env[branch + '_ROOT_REPLY_MS'] || (branch === 'H9' ? 8000 : 0));
+const rootWhiteMs = Number(process.env[branch + '_ROOT_MS'] || (branch === 'H9' || isJ7 ? 45000 : engineMs));
+const rootReplyMs = Number(process.env[branch + '_ROOT_REPLY_MS'] || (branch === 'H9' || isJ7 ? 8000 : 0));
 function rememberMateLines(cacheKey, result) {
   const [encoded, side] = cacheKey.split(':');
   for (const candidate of result.candidates || []) {
@@ -195,8 +205,8 @@ async function expand(history) {
   if (!screen) { screen = screenWhite(board); screens.set(boardKey, screen); }
   const existing = Object.keys(original.nodes[key]?.moves || {});
   let proposal = screen.mode === 'forced' || (screen.candidates.length > 0 && screen.candidates.length <= 9)
-    ? { move: null, candidates: [] } : await query(history, board, 9, history.length === 9 ? rootWhiteMs : engineMs);
-  if (history.length === 9 && rootReplyMs && proposal.candidates.length) proposal = await refineRootProposal(history, board, proposal);
+    ? { move: null, candidates: [] } : await query(history, board, 9, history.length === rootWhitePly ? rootWhiteMs : engineMs);
+  if (history.length === rootWhitePly && rootReplyMs && proposal.candidates.length) proposal = await refineRootProposal(history, board, proposal);
   const moves = includeRequested(history, board, rankedDefenses(screen, proposal, existing));
   if (!moves.length) throw new Error('No selected white defense: ' + key);
   await expandDefenses(history, moves);
@@ -226,12 +236,12 @@ try {
   published.coverage = { ...published.coverage, [label]: {
     root, policy: 'All forced defenses; all one-move-loss escape points when at most nine; otherwise nine-PV engine screening with a 220-score / six-ply mate band, preserving prior viable choices. Terminal examples when no escape exists.',
     exhaustiveLegalMoves: false, whitePositions: Object.keys(reachableAudit).length,
-    ...(rootReplyMs ? { rootRefinement: { whiteSearchMs: rootWhiteMs, blackReplySearchMs: rootReplyMs, policy: 'Refine each of nine root candidates with an independent black search; use the shorter reported mate bound before applying the same six-ply band.' } } : {}),
+    ...(Object.entries(reachableAudit).some(([key, entry]) => key.split(',').length === rootWhitePly && entry.candidates?.some(c => c.replyAnalysis)) ? { rootRefinement: { whiteSearchMs: rootWhiteMs, blackReplySearchMs: rootReplyMs, policy: 'Refine each of nine root candidates with an independent black search; use the shorter reported mate bound before applying the same six-ply band.' } } : {}),
     selections: Object.values(reachableAudit).reduce((counts, item) => { counts[item.selection] = (counts[item.selection] || 0) + 1; return counts; }, {})
   } };
   console.log('Verified', JSON.stringify(verifyG8(published)));
-  fs.writeFileSync('data/g8.json', JSON.stringify(published));
-  writeCompactG8(published);
+  fs.writeFileSync(bookPath, JSON.stringify(published));
+  writeCompactG8(published, isJ7 ? 'j7' : 'g8');
   fs.writeFileSync(coveragePath, JSON.stringify({ version: BOOK_VERSION, root, policy: published.coverage[label], positions: reachableAudit }));
   console.log(branch + ' coverage', JSON.stringify(published.coverage[label]));
 } finally { save(); for (const engine of engines) engine.close(); }

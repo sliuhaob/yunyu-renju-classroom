@@ -9,8 +9,6 @@ import { continuationVerifier, boardOf, findRedundantFours } from './tempo-fours
 import { screenWhite } from './f10-candidates.mjs';
 import { fillFourThreeSides } from './augment-double-four-three.mjs';
 
-const proofPath = 'data/tempo-four-pruning.json';
-
 export function prunePass(book, coverages = {}, previous = { nodes: [], positions: {} }, progress = () => {}) {
   const graph = compactG8(book), replay = continuationVerifier(graph.nodes);
   const positions = {}, replays = {}, nodes = [], ids = new Map(), signatures = new Map(), output = {};
@@ -56,10 +54,14 @@ export function prunePass(book, coverages = {}, previous = { nodes: [], position
     assert.ok(Object.keys(moves).length, 'Pruning produced an empty menu: ' + key);
     output[key] = { ...source, moves };
     if (white) {
-      const old = (previous.positions[key] || []).filter(item => !moves[item.move] && !omissions.some(next => next.move === item.move));
+      // Chained grafts can offer the same coordinate again with a different
+      // black reply. Record one proof per actually removed menu choice; a
+      // coordinate retained by the final suffix is not a removed choice.
+      const uniqueOmissions = [...new Map(omissions.filter(item => !moves[item.move]).map(item => [item.move, item])).values()];
+      const old = (previous.positions[key] || []).filter(item => !moves[item.move] && !uniqueOmissions.some(next => next.move === item.move));
       const proofs = [
         ...old.map(item => ({ ...item, suffix: copyProof(previous.nodes, item.suffix, 'old') })),
-        ...omissions.map(item => ({ ...item, suffix: copyProof(graph.nodes, item.suffix, 'new') }))
+        ...uniqueOmissions.map(item => ({ ...item, suffix: copyProof(graph.nodes, item.suffix, 'new') }))
       ];
       assert.equal(new Set(proofs.map(item => item.move)).size, proofs.length);
       if (proofs.length) positions[key] = proofs;
@@ -102,8 +104,10 @@ export function prunePass(book, coverages = {}, previous = { nodes: [], position
 }
 
 function main() {
-  let book = JSON.parse(fs.readFileSync('data/g8.json', 'utf8'));
-  let coverages = Object.fromEntries(['f10', 'f11', 'h9'].filter(label => fs.existsSync(`data/${label}-coverage.json`))
+  const isJ7 = process.argv.includes('--book=j7'), label = isJ7 ? 'j7' : 'g8';
+  const proofPath = isJ7 ? 'data/j7-tempo-four-pruning.json' : 'data/tempo-four-pruning.json';
+  let book = JSON.parse(fs.readFileSync(`data/${label}.json`, 'utf8'));
+  let coverages = Object.fromEntries((isJ7 ? ['j7'] : ['f10', 'f11', 'h9']).filter(label => fs.existsSync(`data/${label}-coverage.json`))
     .map(label => [label, JSON.parse(fs.readFileSync(`data/${label}-coverage.json`, 'utf8'))]));
   let proof = fs.existsSync(proofPath) ? JSON.parse(fs.readFileSync(proofPath, 'utf8')) : { nodes: [], positions: {} };
   let removed = 0, collapsed = 0, pass;
@@ -128,13 +132,15 @@ function main() {
   // cannot bring back the former one-sided terminal-example menus.
   const opposite = fillFourThreeSides(book, coverages, p => console.log('Four-three coverage', p));
   book = opposite.book; coverages = opposite.coverages;
-  fs.writeFileSync('data/double-four-three-coverage.json', JSON.stringify(opposite.proof));
-  fs.writeFileSync('data/g8.json', JSON.stringify(book));
-  const compact = writeCompactG8(book);
+  fs.writeFileSync(isJ7 ? 'data/j7-double-four-three-coverage.json' : 'data/double-four-three-coverage.json', JSON.stringify(opposite.proof));
+  fs.writeFileSync(`data/${label}.json`, JSON.stringify(book));
+  const compact = writeCompactG8(book, label);
   for (const [label, coverage] of Object.entries(coverages)) fs.writeFileSync(`data/${label}-coverage.json`, JSON.stringify(coverage));
   fs.writeFileSync(proofPath, JSON.stringify(proof));
-  const legacy = trimLegacyBook(JSON.parse(fs.readFileSync('data/responses.json', 'utf8')));
-  fs.writeFileSync('data/responses.json', JSON.stringify(legacy));
+  if (!isJ7) {
+    const legacy = trimLegacyBook(JSON.parse(fs.readFileSync('data/responses.json', 'utf8')));
+    fs.writeFileSync('data/responses.json', JSON.stringify(legacy));
+  }
   console.log('Pruned tempo fours', JSON.stringify({ removed, collapsed, ...book.coverage.tempoFourPruning, stats: book.stats, runtimeNodes: compact.nodes.length }));
 }
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) main();

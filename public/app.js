@@ -3,6 +3,7 @@ const $ = id => document.getElementById(id);
 const API = (window.RENJU_API_BASE || '').replace(/\/$/, '');
 const OPENING = ['H8', 'I9', 'I8', 'H7'];
 const G8_START = [...OPENING, 'G10', 'G8', 'F9'];
+const J7_START = [...OPENING, 'G10', 'J7', 'G8'];
 const STORAGE = 'yunyu-classroom-v1';
 let lessonId = 'main', catalog, state, timeline = [...OPENING], busy = false, showHints = true, demo = false, demoTimer, focusIndex = indexOf('H8');
 let forbiddenPoints = new Map();
@@ -138,9 +139,9 @@ async function goTo(cursor) {
 async function reset(id = lessonId) {
   stopDemo();
   await perform(async () => {
-    const result = await api(id === 'main' ? 'state' : 'move', { history: id === 'main' ? G8_START : OPENING, lessonId: id });
+    const result = await api('state', { history: id === 'main' ? G8_START : J7_START, lessonId: id });
     lessonId = id; state = result; timeline = [...result.history]; showHints = true; render(); save();
-    feedback(id === 'main' ? '已进入 G8 分支。你执白，从白8开始挑战。' : '黑五 G10 已落子。你执白，从第 6 手开始练习。');
+    feedback(`已进入 ${id === 'main' ? 'G8' : 'J7'} 分支。你执白，从白8开始挑战。`);
   });
 }
 async function demoStep() {
@@ -167,7 +168,7 @@ for (const id of ['rules','sources']) { $(id + '-open').onclick = () => $(id + '
 makeBoard();
 await perform(async () => {
   catalog = await api('lessons');
-  $('book-stats').textContent = `棋谱版本 ${catalog.version} · G8 挑战：${catalog.g8.positions} 个局面，${catalog.g8.terminalPaths} 条挑战路线。`;
+  $('book-stats').textContent = `棋谱版本 ${catalog.version} · G8：${catalog.g8.terminalPaths} 条挑战路线${catalog.j7 ? `；J7：${catalog.j7.terminalPaths} 条挑战路线` : ''}。`;
   for (const [i, lesson] of catalog.lessons.entries()) {
     const button = document.createElement('button'); button.className = 'lesson-item'; button.dataset.id = lesson.id;
     const num = document.createElement('span'); num.className = 'lesson-num'; num.textContent = '0' + (i + 1);

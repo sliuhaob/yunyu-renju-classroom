@@ -16,7 +16,8 @@ export function verifyF10(onProgress = () => {}) {
   return verifyExpandedBranch(coverage, requests, onProgress);
 }
 
-export function verifyExpandedBranch(coverage, requests = [], onProgress = () => {}) {
+export function verifyExpandedBranch(coverage, requests = [], onProgress = () => {}, tree = g8, pruningProof = pruning, sideProof = opposite) {
+  const g8 = tree, pruning = pruningProof, opposite = sideProof;
   assert.equal(coverage.version, BOOK_VERSION);
   const label = coverage.root.split(',').at(-1).toLowerCase();
   assert.deepEqual(coverage.policy, g8.coverage[label]);
@@ -52,7 +53,7 @@ export function verifyExpandedBranch(coverage, requests = [], onProgress = () =>
     assert.equal(entry.emptyPointsChecked, screen.checked);
     assert.equal(entry.survivingPoints, screen.candidates.length);
     if (entry.selection === 'tempo-replay') {
-      verifyGraftedMenu(key, replay);
+      verifyGraftedMenu(key, replay, g8, pruning, opposite);
     } else if (entry.selection === 'all-forced' || entry.selection === 'all-tactical-survivors') {
       assert.deepEqual([...screenedMoves].sort(), [...screen.candidates].sort(), 'A viable tactical defense was omitted without a tempo-four proof: ' + key);
     } else if (entry.selection === 'engine-ranked') {

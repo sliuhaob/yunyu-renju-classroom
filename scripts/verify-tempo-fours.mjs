@@ -8,7 +8,8 @@ import { WHITE, coordOf, playChallengeHistory } from '../src/renju.mjs';
 import { continuationVerifier, redundantFour, findRedundantFours, boardOf, follow } from './tempo-fours.mjs';
 import { compactG8 } from './compact-g8.mjs';
 
-export function verifyGraftedMenu(key, replay) {
+export function verifyGraftedMenu(key, replay, tree = g8, evidence = proof, sides = opposite) {
+  const g8 = tree, proof = evidence, opposite = sides;
   const id = proof.replays[key], node = g8.nodes[key], row = proof.nodes[id];
   assert.ok(row && node?.turn === WHITE, 'Missing graft evidence: ' + key);
   assert.ok(replay(boardOf(key.split(',')), id), 'Grafted strategy no longer wins: ' + key);
@@ -26,7 +27,8 @@ export function verifyGraftedMenu(key, replay) {
   }
 }
 
-export function verifyTempoFours() {
+export function verifyTempoFours(tree = g8, evidence = proof, sides = opposite) {
+  const g8 = tree, proof = evidence, opposite = sides;
   assert.equal(proof.version, BOOK_VERSION);
   assert.equal(proof.format, 'omitted-four-replay-v2');
   const replay = continuationVerifier(proof.nodes);
@@ -46,7 +48,7 @@ export function verifyTempoFours() {
       removedChoices++;
     }
   }
-  for (const key of Object.keys(proof.replays)) verifyGraftedMenu(key, replay);
+  for (const key of Object.keys(proof.replays)) verifyGraftedMenu(key, replay, g8, proof, opposite);
   // Check completeness too: the former singleton safeguard escaped the old
   // verifier, which only inspected already-deleted choices.
   const graph = compactG8(g8), remaining = continuationVerifier(graph.nodes);

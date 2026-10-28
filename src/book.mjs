@@ -1,4 +1,4 @@
-export const BOOK_VERSION = '2026-10-26.1';
+export const BOOK_VERSION = '2026-10-28.1';
 export const OPENING = ['H8', 'I9', 'I8', 'H7'];
 export const SOURCES = [
   { title: '励精连珠教室 · 云月白4 H7、黑5 G10', url: 'https://www.ljrenju.com/croom/i06/i06ba.htm' },
@@ -27,8 +27,8 @@ export const LESSONS = [
     }
   },
   {
-    id: 'j7', name: 'J7 防守变化', subtitle: '从另一侧限制斜线', level: '基础', finishDefense: 'H12',
-    description: '白六落在 J7 后，观察黑棋如何通过横三、斜三连续调动，最终完成四三收束。',
+    id: 'j7', name: 'J7 防守挑战', subtitle: '少量选点 · 每支走到终局', level: '进阶', finishDefense: 'H12',
+    description: '白六固定 J7，从白八开始选择防点；黑棋形成合法四三或成五时结束挑战。',
     source: SOURCES[0].url, diagram: 'i062725.gif',
     moves: 'H8 I9 I8 H7 G10 J7 G8 J8 H11 F8 F9 I12 G11 G9 F11 I11 D11 E11 E10 C12 H9 E12 H10'.split(' '),
     notes: {

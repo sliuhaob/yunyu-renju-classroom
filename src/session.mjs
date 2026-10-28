@@ -1,6 +1,7 @@
 import { OPENING, LESSONS, keyOf, BOOK_VERSION } from './book.mjs';
 import { BLACK, WHITE, playChallengeHistory as playHistory, coordOf, indexOf } from './renju.mjs';
 import g8 from '../data/g8-runtime.json' with { type: 'json' };
+import j7 from '../data/j7-runtime.json' with { type: 'json' };
 export class LessonError extends Error {
   constructor(message, status = 422, code = 'OUT_OF_BOOK') { super(message); this.status = status; this.code = code; }
 }
@@ -37,7 +38,12 @@ function resolve(book, history) {
 export function getState(book, history, lessonId = 'main') {
   const lesson = LESSONS.find(l => l.id === lessonId);
   if (!lesson) throw new LessonError('课程不存在', 404, 'UNKNOWN_LESSON');
-  if (lessonId === 'main') return getG8State(history, lesson);
+  return getCuratedState(history, lesson, lessonId === 'j7' ? j7 : g8);
+}
+// Retained only for offline validation of the archived compressed proof book.
+export function getLegacyState(book, history, lessonId = 'j7') {
+  const lesson = LESSONS.find(l => l.id === lessonId);
+  if (!lesson) throw new LessonError('课程不存在', 404, 'UNKNOWN_LESSON');
   const { cursor, board, outcome, note, history: normalized } = resolve(book, history);
   const turn = history.length % 2 ? WHITE : BLACK;
   let choices;
@@ -51,7 +57,7 @@ export function getState(book, history, lessonId = 'main') {
   const hints = outcome ? [] : onLine && choices.includes(preferred) ? [preferred, ...recorded.filter(c => c !== preferred)] : cursor.type === 'white' ? cursor.proof.threats : recorded.length ? recorded : choices.slice(0, 3);
   return { version: BOOK_VERSION, history: normalized, turn, choices, hints, note: note || '白四已落在 H7，轮到黑五。先观察四子的中心对称关系。', outcome, onLine, phase: cursor.type, lessonId, source: lesson.source, totalRecorded: lesson.moves.length, coverage: { supported: choices.length, empty: board.filter(p => !p).length } };
 }
-function getG8State(history, lesson) {
+function getCuratedState(history, lesson, g8) {
   if (!Array.isArray(history) || history.length < 4 || history.length > 225 || history.some(c => typeof c !== 'string')) throw new LessonError('棋谱格式无效', 400, 'BAD_HISTORY');
   const normalized = history.map(c => c.toUpperCase());
   if (!OPENING.every((c, i) => normalized[i] === c)) throw new LessonError('前四手固定为 H8、I9、I8、H7', 400, 'BAD_OPENING');
@@ -69,7 +75,7 @@ function getG8State(history, lesson) {
   const choices = game.outcome ? [] : node?.filter((_, i) => i % 2 === 1).map(coordOf) || [];
   if (!game.outcome && !choices.length) throw new LessonError('分支数据不完整', 500, 'BOOK_ERROR');
   const turn = normalized.length % 2 ? WHITE : BLACK;
-  return { version: BOOK_VERSION, history: normalized, turn, choices, hints: turn === WHITE ? choices : [], note: '', outcome: game.outcome, onLine: false, phase: 'curated', curated: true, lessonId: 'main', source: lesson.source, totalRecorded: g8.stats.latestEndPly, maxPliesToEnd: node?.[0] || 0, coverage: { supported: choices.length, empty: 225 - normalized.length } };
+  return { version: BOOK_VERSION, history: normalized, turn, choices, hints: turn === WHITE ? choices : [], note: '', outcome: game.outcome, onLine: false, phase: 'curated', curated: true, lessonId: lesson.id, source: lesson.source, totalRecorded: g8.stats.latestEndPly, maxPliesToEnd: node?.[0] || 0, coverage: { supported: choices.length, empty: 225 - normalized.length } };
 }
 export function advance(book, history, whiteMove, lessonId) {
   const state = getState(book, history, lessonId);

@@ -3,12 +3,12 @@ import assert from 'node:assert/strict';
 import worker from '../worker/index.mjs';
 import book from '../data/responses.json' with { type: 'json' };
 import { OPENING, LESSONS } from '../src/book.mjs';
-import { getState, advance } from '../src/session.mjs';
+import { getState, getLegacyState, advance } from '../src/session.mjs';
 const request = (path, input, origin = 'http://localhost:5173') => worker.fetch(new Request('https://api.example' + path, { method: 'POST', headers: { 'Content-Type': 'application/json', Origin: origin }, body: JSON.stringify(input) }));
 test('fixed opening is centrally symmetric around the black midpoint', () => {
   assert.deepEqual(OPENING, ['H8', 'I9', 'I8', 'H7']);
 });
-test('G8 challenge fixes the opening while the legacy J7 variation remains available', () => {
+test('G8 challenge fixes the opening and both white-six lessons remain available', () => {
   const start = advance(book, OPENING, null, 'main'); assert.equal(start.blackMove, 'G10');
   assert.deepEqual(start.choices, ['G8']);
   assert.equal(advance(book, start.history, 'G8', 'main').blackMove, 'F9');
@@ -159,19 +159,12 @@ test('white ten after H9 F10 exposes every selected defense and each continues t
   }
 });
 
-test('early off-line defenses enter a proved win for every remaining white reply', () => {
-  const cases = [
-    { id: 'j7', history: [...OPENING, 'G10', 'J7', 'G8'], reply: 'F8' }
-  ];
-  for (const { id, history, reply } of cases) {
-    const state = advance(book, history, 'A1', id);
-    assert.equal(state.blackMove, reply);
-    assert.equal(state.choices.length, 225 - state.history.length);
-    for (const defense of state.choices) {
-      const result = advance(book, state.history, defense, id);
-      assert.equal(result.outcome?.winner, 1, id + ': ' + defense);
-    }
-  }
+test('J7 offers a curated white-eight menu instead of arbitrary distant moves', () => {
+  const h = [...OPENING, 'G10', 'J7', 'G8'];
+  const state = getState(book, h, 'j7');
+  assert.ok(state.curated && state.choices.length >= 2 && state.choices.length <= 9);
+  assert.ok(!state.choices.includes('A1'));
+  assert.throws(() => advance(book, h, 'A1', 'j7'), e => e.code === 'OUT_OF_BOOK');
 });
 for (const lesson of LESSONS) test(`${lesson.id} stops at its first four-three and rejects further play`, async () => {
   let state = advance(book, OPENING, null, lesson.id), steps = 0;
@@ -185,7 +178,7 @@ for (const lesson of LESSONS) test(`${lesson.id} stops at its first four-three a
 });
 test('replay validates arbitrary recorded prefixes, and blocks forged black moves', () => {
   const lesson = LESSONS.find(l => l.id === 'j7');
-  for (let i = 4; i <= lesson.moves.length; i++) assert.equal(getState(book, lesson.moves.slice(0,i), lesson.id).history.length, i);
+  for (let i = 4; i <= lesson.moves.length; i++) assert.equal(getLegacyState(book, lesson.moves.slice(0,i), lesson.id).history.length, i);
   assert.throws(() => getState(book, [...OPENING,'A1'], 'main'));
 });
 test('API returns next white turn with exact CORS origin', async () => {

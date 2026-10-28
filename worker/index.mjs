@@ -1,5 +1,6 @@
 import book from '../data/responses.json' with { type: 'json' };
 import g8 from '../data/g8-runtime.json' with { type: 'json' };
+import j7 from '../data/j7-runtime.json' with { type: 'json' };
 import { LESSONS, OPENING, BOOK_VERSION, SOURCES } from '../src/book.mjs';
 import { getState, advance, LessonError } from '../src/session.mjs';
 export default {
@@ -14,7 +15,7 @@ export default {
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: { ...headers, 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type', 'Access-Control-Max-Age': '86400' } });
     try {
       if (url.pathname === '/api/health' && request.method === 'GET') return json({ ok: true, version: BOOK_VERSION });
-      if (url.pathname === '/api/lessons' && request.method === 'GET') return json({ lessons: LESSONS.map(({ moves, notes, diagram, ...lesson }) => ({ ...lesson, length: moves.length })), opening: OPENING, sources: SOURCES, version: BOOK_VERSION, provedVariations: book.proved, g8: g8.stats });
+      if (url.pathname === '/api/lessons' && request.method === 'GET') return json({ lessons: LESSONS.map(({ moves, notes, diagram, ...lesson }) => ({ ...lesson, length: moves.length })), opening: OPENING, sources: SOURCES, version: BOOK_VERSION, provedVariations: book.proved, g8: g8.stats, j7: j7.stats });
       if (!['/api/state', '/api/move'].includes(url.pathname)) return json({ error: '接口不存在' }, 404);
       if (request.method !== 'POST') return json({ error: '请使用 POST 请求' }, 405);
       if (!request.headers.get('Content-Type')?.includes('application/json')) return json({ error: '请使用 JSON 格式' }, 415);
