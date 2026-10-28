@@ -1,7 +1,12 @@
-import { OPENING, LESSONS, keyOf, BOOK_VERSION } from './book.mjs';
+import { OPENING, LESSONS, CHALLENGE, keyOf, BOOK_VERSION } from './book.mjs';
 import { BLACK, WHITE, playChallengeHistory as playHistory, coordOf, indexOf } from './renju.mjs';
 import g8 from '../data/g8-runtime.json' with { type: 'json' };
 import j7 from '../data/j7-runtime.json' with { type: 'json' };
+import w6h9 from '../data/w6h9-runtime.json' with { type: 'json' };
+import w6g9 from '../data/w6g9-runtime.json' with { type: 'json' };
+import { joinWhiteSixBooks } from './opening-book.mjs';
+export const whiteSixBooks = { G8: g8, J7: j7, H9: w6h9, G9: w6g9 };
+const openingBook = joinWhiteSixBooks(Object.entries(whiteSixBooks));
 export class LessonError extends Error {
   constructor(message, status = 422, code = 'OUT_OF_BOOK') { super(message); this.status = status; this.code = code; }
 }
@@ -35,7 +40,8 @@ function resolve(book, history) {
   try { game = playHistory(history); } catch (error) { throw new LessonError(error.message, 400, 'ILLEGAL_HISTORY'); }
   return { cursor, note, ...game, history };
 }
-export function getState(book, history, lessonId = 'main') {
+export function getState(book, history, lessonId = CHALLENGE.id) {
+  if (lessonId === CHALLENGE.id) return getCuratedState(history, CHALLENGE, openingBook);
   const lesson = LESSONS.find(l => l.id === lessonId);
   if (!lesson) throw new LessonError('课程不存在', 404, 'UNKNOWN_LESSON');
   return getCuratedState(history, lesson, lessonId === 'j7' ? j7 : g8);

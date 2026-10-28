@@ -104,10 +104,12 @@ export function prunePass(book, coverages = {}, previous = { nodes: [], position
 }
 
 function main() {
-  const isJ7 = process.argv.includes('--book=j7'), label = isJ7 ? 'j7' : 'g8';
-  const proofPath = isJ7 ? 'data/j7-tempo-four-pruning.json' : 'data/tempo-four-pruning.json';
+  const label = process.argv.find(arg => arg.startsWith('--book='))?.split('=')[1] || 'g8';
+  assert.ok(['g8', 'j7', 'w6h9', 'w6g9'].includes(label), 'Unknown book');
+  const prefix = label === 'g8' ? '' : label + '-';
+  const proofPath = `data/${prefix}tempo-four-pruning.json`;
   let book = JSON.parse(fs.readFileSync(`data/${label}.json`, 'utf8'));
-  let coverages = Object.fromEntries((isJ7 ? ['j7'] : ['f10', 'f11', 'h9']).filter(label => fs.existsSync(`data/${label}-coverage.json`))
+  let coverages = Object.fromEntries((label === 'g8' ? ['f10', 'f11', 'h9'] : [label]).filter(label => fs.existsSync(`data/${label}-coverage.json`))
     .map(label => [label, JSON.parse(fs.readFileSync(`data/${label}-coverage.json`, 'utf8'))]));
   let proof = fs.existsSync(proofPath) ? JSON.parse(fs.readFileSync(proofPath, 'utf8')) : { nodes: [], positions: {} };
   let removed = 0, collapsed = 0, pass;
@@ -132,12 +134,12 @@ function main() {
   // cannot bring back the former one-sided terminal-example menus.
   const opposite = fillFourThreeSides(book, coverages, p => console.log('Four-three coverage', p));
   book = opposite.book; coverages = opposite.coverages;
-  fs.writeFileSync(isJ7 ? 'data/j7-double-four-three-coverage.json' : 'data/double-four-three-coverage.json', JSON.stringify(opposite.proof));
+  fs.writeFileSync(`data/${prefix}double-four-three-coverage.json`, JSON.stringify(opposite.proof));
   fs.writeFileSync(`data/${label}.json`, JSON.stringify(book));
   const compact = writeCompactG8(book, label);
   for (const [label, coverage] of Object.entries(coverages)) fs.writeFileSync(`data/${label}-coverage.json`, JSON.stringify(coverage));
   fs.writeFileSync(proofPath, JSON.stringify(proof));
-  if (!isJ7) {
+  if (label === 'g8') {
     const legacy = trimLegacyBook(JSON.parse(fs.readFileSync('data/responses.json', 'utf8')));
     fs.writeFileSync('data/responses.json', JSON.stringify(legacy));
   }

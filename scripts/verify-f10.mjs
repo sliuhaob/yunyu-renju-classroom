@@ -19,7 +19,7 @@ export function verifyF10(onProgress = () => {}) {
 export function verifyExpandedBranch(coverage, requests = [], onProgress = () => {}, tree = g8, pruningProof = pruning, sideProof = opposite) {
   const g8 = tree, pruning = pruningProof, opposite = sideProof;
   assert.equal(coverage.version, BOOK_VERSION);
-  const label = coverage.root.split(',').at(-1).toLowerCase();
+  const label = coverage.label || coverage.root.split(',').at(-1).toLowerCase();
   assert.deepEqual(coverage.policy, g8.coverage[label]);
   assert.equal(coverage.policy.exhaustiveLegalMoves, false);
   const positions = Object.entries(g8.nodes).filter(([key, node]) => key.startsWith(coverage.root + ',') && node.turn === 2);

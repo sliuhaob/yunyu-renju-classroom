@@ -8,33 +8,35 @@ import { immediateFinish, screenWhite, rankedDefenses } from './f10-candidates.m
 import { BLACK, WHITE, playChallengeHistory, analyzeMove, indexOf, coordOf } from '../src/renju.mjs';
 import { BOOK_VERSION, OPENING, LESSONS } from '../src/book.mjs';
 
-const branch = process.argv.find(arg => arg.startsWith('--branch='))?.split('=')[1].toUpperCase() || 'F10';
-if (!['F10', 'F11', 'H9', 'J7'].includes(branch)) throw new Error('Unsupported branch: ' + branch);
-const label = branch.toLowerCase(), isJ7 = branch === 'J7';
-const root = isJ7 ? 'H8,I9,I8,H7,G10,J7' : 'H8,I9,I8,H7,G10,G8,F9,' + branch;
+const whiteSix = process.argv.find(arg => arg.startsWith('--white6='))?.split('=')[1].toUpperCase();
+if (whiteSix && !['H9', 'G9'].includes(whiteSix)) throw new Error('Unsupported white six: ' + whiteSix);
+const branch = whiteSix || process.argv.find(arg => arg.startsWith('--branch='))?.split('=')[1].toUpperCase() || 'F10';
+if (!['F10', 'F11', 'H9', 'J7', 'G9'].includes(branch)) throw new Error('Unsupported branch: ' + branch);
+const label = (whiteSix ? 'w6' : '') + branch.toLowerCase(), isJ7 = branch === 'J7', independent = !!whiteSix || isJ7;
+const root = independent ? 'H8,I9,I8,H7,G10,' + branch : 'H8,I9,I8,H7,G10,G8,F9,' + branch;
 const rootWhitePly = root.split(',').length + 1;
-const bookPath = isJ7 ? 'data/j7.json' : 'data/g8.json';
+const bookLabel = independent ? label : 'g8', bookPath = `data/${bookLabel}.json`;
 const coveragePath = `data/${label}-coverage.json`, requestsPath = `data/${label}-requests.json`;
-function seedJ7() {
-  const moves = LESSONS.find(lesson => lesson.id === 'j7').moves, nodes = {};
+function seedBranch() {
+  const moves = whiteSix ? root.split(',') : LESSONS.find(lesson => lesson.id === 'j7').moves, nodes = {};
   for (let n = 4; n < moves.length; n++) nodes[moves.slice(0, n).join(',')] = {
     turn: n % 2 ? WHITE : BLACK, moves: { [moves[n]]: { kind: 'recorded' } }
   };
   return { opening: OPENING, nodes, coverage: {} };
 }
-const original = fs.existsSync(bookPath) ? JSON.parse(fs.readFileSync(bookPath, 'utf8')) : seedJ7();
+const original = fs.existsSync(bookPath) ? JSON.parse(fs.readFileSync(bookPath, 'utf8')) : seedBranch();
 const requests = fs.existsSync(requestsPath) ? JSON.parse(fs.readFileSync(requestsPath, 'utf8')) : [];
 const requestedMoves = new Map(requests.map(({ history, moves }) => [history.join(','), moves]));
 const requestedOnly = process.argv.includes('--requested-only');
 const nodes = {}, audit = {}, screens = new Map(), proofMoves = new Map(), mateHints = new Map();
-const engines = Array.from({ length: 4 }, () => new Rapfi()), idleEngines = [...engines], waitingEngines = [], inFlight = new Map();
+const engines = Array.from({ length: Number(process.env.RENJU_ENGINES || 4) }, () => new Rapfi()), idleEngines = [...engines], waitingEngines = [], inFlight = new Map();
 let spareLanes = engines.length - 1;
 const cachePath = `artifacts/${label}-engine-cache.json`, progressPath = `artifacts/${label}-${requestedOnly ? 'request' : 'build'}-progress.json`;
 let cache = fs.existsSync(cachePath) ? JSON.parse(fs.readFileSync(cachePath, 'utf8')) : {};
 let queries = 0, completed = 0;
 const engineMs = Number(process.env[branch + '_ENGINE_MS'] || 1200);
-const rootWhiteMs = Number(process.env[branch + '_ROOT_MS'] || (branch === 'H9' || isJ7 ? 45000 : engineMs));
-const rootReplyMs = Number(process.env[branch + '_ROOT_REPLY_MS'] || (branch === 'H9' || isJ7 ? 8000 : 0));
+const rootWhiteMs = Number(process.env[branch + '_ROOT_MS'] || (branch === 'H9' || independent ? 45000 : engineMs));
+const rootReplyMs = Number(process.env[branch + '_ROOT_REPLY_MS'] || (branch === 'H9' || independent ? 8000 : 0));
 function rememberMateLines(cacheKey, result) {
   const [encoded, side] = cacheKey.split(':');
   for (const candidate of result.candidates || []) {
@@ -166,8 +168,8 @@ async function expand(history) {
       proofMove = proofMoves.get(boardKey);
     }
     let candidates = proofMove ? [proofMove] : prior;
-    if (!proofMove && history.length > 8 && history.length <= 22) {
-      const r = await query(history, board, 3, 8000);
+    if (!proofMove && (history.length > 8 || whiteSix) && history.length <= 22) {
+      const r = await query(history, board, 3, whiteSix && history.length === 6 ? 45000 : 8000);
       const mates = r.candidates.filter(c => /^\+?M\d+$/.test(c.eval)).sort((a, b) => Number(a.eval.replace(/^\+?M/, '')) - Number(b.eval.replace(/^\+?M/, '')));
       candidates = [...new Set([...(mates.length ? mates.map(c => c.move) : prior.length ? prior : [r.move]), ...r.candidates.map(c => c.move)])];
     }
@@ -241,7 +243,7 @@ try {
   } };
   console.log('Verified', JSON.stringify(verifyG8(published)));
   fs.writeFileSync(bookPath, JSON.stringify(published));
-  writeCompactG8(published, isJ7 ? 'j7' : 'g8');
-  fs.writeFileSync(coveragePath, JSON.stringify({ version: BOOK_VERSION, root, policy: published.coverage[label], positions: reachableAudit }));
+  writeCompactG8(published, bookLabel);
+  fs.writeFileSync(coveragePath, JSON.stringify({ version: BOOK_VERSION, label, root, policy: published.coverage[label], positions: reachableAudit }));
   console.log(branch + ' coverage', JSON.stringify(published.coverage[label]));
 } finally { save(); for (const engine of engines) engine.close(); }

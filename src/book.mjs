@@ -1,9 +1,14 @@
-export const BOOK_VERSION = '2026-10-28.1';
+export const BOOK_VERSION = '2026-10-28.2';
 export const OPENING = ['H8', 'I9', 'I8', 'H7'];
 export const SOURCES = [
   { title: '励精连珠教室 · 云月白4 H7、黑5 G10', url: 'https://www.ljrenju.com/croom/i06/i06ba.htm' },
   { title: 'RIF 国际连珠规则 · 第9条', url: 'https://gomoku.renju.net/rifrules/' }
 ];
+export const CHALLENGE = {
+  id: 'opening', name: '白6 防守挑战', subtitle: 'G8 · J7 · H9 · G9',
+  description: '前四手固定，黑5 G10 后选择白6。黑棋首次形成合法四三或成五时结束。',
+  source: SOURCES[0].url
+};
 // Move coordinates are transcribed factual variations; all prose and artwork are original.
 // Both records use the actual Cloud Moon board. Do not translate to Rain Moon:
 // the distance to an edge can change a tactical result.

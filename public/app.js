@@ -2,10 +2,9 @@ import { coordOf, indexOf, playHistory, analyzeMove, BLACK, forbiddenNames } fro
 const $ = id => document.getElementById(id);
 const API = (window.RENJU_API_BASE || '').replace(/\/$/, '');
 const OPENING = ['H8', 'I9', 'I8', 'H7'];
-const G8_START = [...OPENING, 'G10', 'G8', 'F9'];
-const J7_START = [...OPENING, 'G10', 'J7', 'G8'];
+const START = [...OPENING, 'G10'];
 const STORAGE = 'yunyu-classroom-v1';
-let lessonId = 'main', catalog, state, timeline = [...OPENING], busy = false, showHints = true, demo = false, demoTimer, focusIndex = indexOf('H8');
+let lessonId = 'opening', catalog, state, timeline = [...OPENING], busy = false, showHints = true, demo = false, demoTimer, focusIndex = indexOf('H8');
 let forbiddenPoints = new Map();
 const feedback = (text, error = false) => { $('feedback').textContent = text; $('feedback').classList.toggle('error', error); };
 async function api(path, body) {
@@ -79,8 +78,8 @@ function render() {
     }
   }
   $('board').classList.toggle('no-numbers', !$('numbers').checked);
-  $('lesson-title').textContent = lesson.name;
-  $('lesson-number').textContent = lessonId === 'main' ? '01' : '02';
+  $('lesson-title').textContent = state.history[5] ? state.history[5] + ' 防守挑战' : lesson.name;
+  $('lesson-number').textContent = '01';
   $('turn-label').replaceChildren();
   const dot = document.createElement('b'); dot.className = 'small-white';
   $('turn-label').append(dot, state.outcome ? (state.outcome.reason === 'four-three' ? '本变化结束 · 黑棋四三' : '本变化结束 · 黑棋成五') : state.history.length < timeline.length ? '复盘中 · 可从这里继续' : state.turn === 2 ? `轮到你 · 白${state.history.length + 1}` : `轮到黑棋 · 第${state.history.length + 1}手`);
@@ -111,7 +110,7 @@ function render() {
 function updateButtons() {
   for (const id of ['hint','reset','undo','first','prev','next','last','symmetry','export']) $(id).disabled = busy || !state;
   if (!state) { $('demo').disabled = true; return; }
-  $('undo').disabled = busy || state.history.length <= (state.curated ? 7 : 5);
+  $('undo').disabled = busy || state.history.length <= 5;
   $('first').disabled = $('prev').disabled = busy || state.history.length <= 4;
   $('last').disabled = busy || state.history.length === timeline.length;
   $('next').disabled = busy || (state.history.length === timeline.length && (state.turn === 2 || !!state.outcome));
@@ -139,9 +138,9 @@ async function goTo(cursor) {
 async function reset(id = lessonId) {
   stopDemo();
   await perform(async () => {
-    const result = await api('state', { history: id === 'main' ? G8_START : J7_START, lessonId: id });
+    const result = await api('state', { history: START, lessonId: id });
     lessonId = id; state = result; timeline = [...result.history]; showHints = true; render(); save();
-    feedback(`已进入 ${id === 'main' ? 'G8' : 'J7'} 分支。你执白，从白8开始挑战。`);
+    feedback('前四手固定，黑5已落在 G10。请选择白6的防点。');
   });
 }
 async function demoStep() {
@@ -153,7 +152,7 @@ async function demoStep() {
 $('hint').onclick = () => { showHints = !showHints; render(); feedback(showHints ? '候选点已标出。' : '候选点标记已隐藏。'); };
 $('numbers').onchange = render; $('forbidden').onchange = () => { render(); feedback($('forbidden').checked ? '× 只限制黑棋；你执白，可以在这些点落子。' : '黑棋禁手标记已隐藏。'); };
 $('reset').onclick = () => reset(); $('classroom').onclick = () => $('board').scrollIntoView({ behavior: 'smooth', block: 'center' });
-$('undo').onclick = () => { stopDemo(); goTo(Math.max(state.curated ? 7 : 5, state.history.length - (state.history.length % 2 ? 2 : 1))); };
+$('undo').onclick = () => { stopDemo(); goTo(Math.max(5, state.history.length - (state.history.length % 2 ? 2 : 1))); };
 $('first').onclick = () => { stopDemo(); goTo(4); }; $('symmetry').onclick = () => { stopDemo(); goTo(4); };
 $('prev').onclick = () => { stopDemo(); goTo(state.history.length - 1); };
 $('last').onclick = () => { stopDemo(); goTo(timeline.length); };
@@ -168,8 +167,8 @@ for (const id of ['rules','sources']) { $(id + '-open').onclick = () => $(id + '
 makeBoard();
 await perform(async () => {
   catalog = await api('lessons');
-  $('book-stats').textContent = `棋谱版本 ${catalog.version} · G8：${catalog.g8.terminalPaths} 条挑战路线${catalog.j7 ? `；J7：${catalog.j7.terminalPaths} 条挑战路线` : ''}。`;
-  for (const [i, lesson] of catalog.lessons.entries()) {
+  $('book-stats').textContent = `棋谱版本 ${catalog.version} · ${Object.entries(catalog.whiteSix).map(([move, stats]) => `${move}：${stats.terminalPaths} 条挑战路线`).join('；')}。`;
+  for (const [i, lesson] of catalog.lessons.filter(l => !l.hidden).entries()) {
     const button = document.createElement('button'); button.className = 'lesson-item'; button.dataset.id = lesson.id;
     const num = document.createElement('span'); num.className = 'lesson-num'; num.textContent = '0' + (i + 1);
     const content = document.createElement('span'), strong = document.createElement('strong'), small = document.createElement('small'); strong.textContent = lesson.name; small.textContent = lesson.subtitle; content.append(strong, small); button.append(num, content);
@@ -177,14 +176,14 @@ await perform(async () => {
   }
   let saved;
   try { saved = JSON.parse(localStorage.getItem(STORAGE)); } catch {}
-  if (saved?.version === catalog.version && catalog.lessons.some(l => l.id === saved.lessonId) && Array.isArray(saved.timeline)) {
+  if (saved?.version === catalog.version && saved.lessonId === 'opening' && Array.isArray(saved.timeline)) {
     try {
       await api('state', { history: saved.timeline, lessonId: saved.lessonId });
       const cursor = Number.isInteger(saved.cursor) && saved.cursor >= 4 && saved.cursor <= saved.timeline.length ? saved.cursor : saved.timeline.length;
       state = await api('state', { history: saved.timeline.slice(0, cursor), lessonId: saved.lessonId }); timeline = saved.timeline; lessonId = saved.lessonId;
     } catch { saved = null; }
   }
-  if (!state) { state = await api('state', { history: G8_START, lessonId }); timeline = [...state.history]; }
+  if (!state) { state = await api('state', { history: START, lessonId }); timeline = [...state.history]; }
   render(); save(); $('connection').textContent = API ? 'Cloudflare · 固定棋谱' : '本地预览 · 固定棋谱';
-  feedback(saved && state.history.length > 5 ? '已恢复上次的练习进度。' : '已进入 G8 分支。你执白，从白8开始挑战。');
+  feedback(saved && state.history.length > 5 ? '已恢复上次的练习进度。' : '前四手固定，黑5已落在 G10。请选择白6的防点。');
 });
