@@ -4,9 +4,12 @@ import g8 from '../data/g8-runtime.json' with { type: 'json' };
 import j7 from '../data/j7-runtime.json' with { type: 'json' };
 import w6h9 from '../data/w6h9-runtime.json' with { type: 'json' };
 import w6g9 from '../data/w6g9-runtime.json' with { type: 'json' };
-import { joinWhiteSixBooks } from './opening-book.mjs';
+import w4j8 from '../data/w4j8-runtime.json' with { type: 'json' };
+import w4g8 from '../data/w4g8-runtime.json' with { type: 'json' };
+import { joinWhiteSixBooks, joinWhiteFourBooks } from './opening-book.mjs';
 export const whiteSixBooks = { G8: g8, J7: j7, H9: w6h9, G9: w6g9 };
-const openingBook = joinWhiteSixBooks(Object.entries(whiteSixBooks));
+export const whiteFourBooks = { H7: joinWhiteSixBooks(Object.entries(whiteSixBooks)), J8: w4j8, G8: w4g8 };
+const openingBook = joinWhiteFourBooks(Object.entries(whiteFourBooks));
 export class LessonError extends Error {
   constructor(message, status = 422, code = 'OUT_OF_BOOK') { super(message); this.status = status; this.code = code; }
 }
@@ -64,11 +67,12 @@ export function getLegacyState(book, history, lessonId = 'j7') {
   return { version: BOOK_VERSION, history: normalized, turn, choices, hints, note: note || '白四已落在 H7，轮到黑五。先观察四子的中心对称关系。', outcome, onLine, phase: cursor.type, lessonId, source: lesson.source, totalRecorded: lesson.moves.length, coverage: { supported: choices.length, empty: board.filter(p => !p).length } };
 }
 function getCuratedState(history, lesson, g8) {
-  if (!Array.isArray(history) || history.length < 4 || history.length > 225 || history.some(c => typeof c !== 'string')) throw new LessonError('棋谱格式无效', 400, 'BAD_HISTORY');
+  const opening = g8.opening || OPENING;
+  if (!Array.isArray(history) || history.length < opening.length || history.length > 225 || history.some(c => typeof c !== 'string')) throw new LessonError('棋谱格式无效', 400, 'BAD_HISTORY');
   const normalized = history.map(c => c.toUpperCase());
-  if (!OPENING.every((c, i) => normalized[i] === c)) throw new LessonError('前四手固定为 H8、I9、I8、H7', 400, 'BAD_OPENING');
+  if (!opening.every((c, i) => normalized[i] === c)) throw new LessonError('起始落子固定为 ' + opening.join('、'), 400, 'BAD_OPENING');
   let node = g8.nodes[g8.root];
-  for (let i = 4; i < normalized.length; i++) {
+  for (let i = opening.length; i < normalized.length; i++) {
     let position;
     try { position = indexOf(normalized[i]); } catch { throw new LessonError('无效坐标', 400, 'BAD_HISTORY'); }
     let child;

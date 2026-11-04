@@ -1,8 +1,8 @@
 import book from '../data/responses.json' with { type: 'json' };
 import g8 from '../data/g8-runtime.json' with { type: 'json' };
 import j7 from '../data/j7-runtime.json' with { type: 'json' };
-import { LESSONS, CHALLENGE, OPENING, BOOK_VERSION, SOURCES } from '../src/book.mjs';
-import { getState, advance, LessonError, whiteSixBooks } from '../src/session.mjs';
+import { LESSONS, CHALLENGE, FIXED_OPENING, BOOK_VERSION, SOURCES } from '../src/book.mjs';
+import { getState, advance, LessonError, whiteSixBooks, whiteFourBooks } from '../src/session.mjs';
 export default {
   async fetch(request, env = {}) {
     const url = new URL(request.url), origin = request.headers.get('Origin');
@@ -15,7 +15,7 @@ export default {
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: { ...headers, 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type', 'Access-Control-Max-Age': '86400' } });
     try {
       if (url.pathname === '/api/health' && request.method === 'GET') return json({ ok: true, version: BOOK_VERSION });
-      if (url.pathname === '/api/lessons' && request.method === 'GET') return json({ lessons: [CHALLENGE, ...LESSONS.map(({ moves, notes, diagram, ...lesson }) => ({ ...lesson, hidden: true, length: moves.length }))], opening: OPENING, sources: SOURCES, version: BOOK_VERSION, provedVariations: book.proved, g8: g8.stats, j7: j7.stats, whiteSix: Object.fromEntries(Object.entries(whiteSixBooks).map(([move, tree]) => [move, tree.stats])) });
+      if (url.pathname === '/api/lessons' && request.method === 'GET') return json({ lessons: [CHALLENGE, ...LESSONS.map(({ moves, notes, diagram, ...lesson }) => ({ ...lesson, hidden: true, length: moves.length }))], opening: FIXED_OPENING, sources: SOURCES, version: BOOK_VERSION, provedVariations: book.proved, g8: g8.stats, j7: j7.stats, whiteSix: Object.fromEntries(Object.entries(whiteSixBooks).map(([move, tree]) => [move, tree.stats])), whiteFour: Object.fromEntries(Object.entries(whiteFourBooks).map(([move, tree]) => [move, tree.stats])) });
       if (!['/api/state', '/api/move'].includes(url.pathname)) return json({ error: '接口不存在' }, 404);
       if (request.method !== 'POST') return json({ error: '请使用 POST 请求' }, 405);
       if (!request.headers.get('Content-Type')?.includes('application/json')) return json({ error: '请使用 JSON 格式' }, 415);

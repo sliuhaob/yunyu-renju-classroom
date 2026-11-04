@@ -24,7 +24,7 @@ export function trimG8Book(book) {
     if (node.turn === WHITE) histogram[moves.length] = (histogram[moves.length] || 0) + 1;
     return node.maxPliesToEnd;
   }
-  visit(OPENING);
+  visit(book.opening || OPENING);
   return { ...book, version: BOOK_VERSION, stopCondition: 'black-four-three-or-five', nodes,
     provenance: { ...book.provenance, verification: 'Every selected path ends at the first legal black four-three or five. Four-three is a challenge stop, not a RIF five-in-a-row result.' },
     stats: { positions: Object.keys(nodes).length, terminalPaths: leaves.length, whiteChoiceHistogram: histogram,

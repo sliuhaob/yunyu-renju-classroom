@@ -4,9 +4,9 @@ import g8 from '../data/g8.json' with { type: 'json' };
 import { OPENING, BOOK_VERSION, keyOf } from '../src/book.mjs';
 import { BLACK, WHITE, playChallengeHistory as playHistory, analyzeMove, indexOf, coordOf, winningMoves } from '../src/renju.mjs';
 
-export function verifyG8(tree = g8) {
+export function verifyG8(tree = g8, opening = OPENING) {
   assert.equal(tree.version, BOOK_VERSION);
-  assert.deepEqual(tree.opening, OPENING);
+  assert.deepEqual(tree.opening, opening);
   assert.equal(tree.stopCondition, 'black-four-three-or-five');
   const visited = new Set(), endings = [], histogram = {}, reasons = { 'four-three': 0, five: 0 };
   function visit(history) {
@@ -37,7 +37,7 @@ export function verifyG8(tree = g8) {
     assert.equal(node.maxPliesToEnd, max, 'Incorrect remaining distance');
     return max;
   }
-  visit(OPENING);
+  visit(opening);
   assert.equal(visited.size, Object.keys(tree.nodes).length, 'Unreachable nodes');
   assert.equal(visited.size, tree.stats.positions);
   assert.equal(endings.length, tree.stats.terminalPaths);

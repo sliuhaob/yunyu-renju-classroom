@@ -57,7 +57,7 @@ test('all four unified strategies exactly preserve every stored choice and black
 });
 
 test('unified entry rejects forged history and unsupported moves', () => {
-  assert.throws(() => state(['H8', 'I9', 'I8', 'H6']), e => e.code === 'BAD_OPENING');
+  assert.throws(() => state(['H8', 'I9', 'I8', 'H6']), e => e.code === 'OUT_OF_BOOK');
   assert.throws(() => state([...OPENING, 'J10']), e => e.code === 'BAD_REPLY');
   assert.throws(() => state([...start, 'A1']), e => e.code === 'OUT_OF_BOOK');
   assert.throws(() => move(start, 'A1'), e => e.code === 'OUT_OF_BOOK');

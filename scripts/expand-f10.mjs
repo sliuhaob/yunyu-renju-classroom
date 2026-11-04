@@ -8,21 +8,25 @@ import { immediateFinish, screenWhite, rankedDefenses } from './f10-candidates.m
 import { BLACK, WHITE, playChallengeHistory, analyzeMove, indexOf, coordOf } from '../src/renju.mjs';
 import { BOOK_VERSION, OPENING, LESSONS } from '../src/book.mjs';
 
+const whiteFour = process.argv.find(arg => arg.startsWith('--white4='))?.split('=')[1].toUpperCase();
+if (whiteFour && !['J8', 'G8'].includes(whiteFour)) throw new Error('Unsupported white four: ' + whiteFour);
 const whiteSix = process.argv.find(arg => arg.startsWith('--white6='))?.split('=')[1].toUpperCase();
+if (whiteFour && whiteSix) throw new Error('Choose one opening branch');
 if (whiteSix && !['H9', 'G9'].includes(whiteSix)) throw new Error('Unsupported white six: ' + whiteSix);
-const branch = whiteSix || process.argv.find(arg => arg.startsWith('--branch='))?.split('=')[1].toUpperCase() || 'F10';
-if (!['F10', 'F11', 'H9', 'J7', 'G9'].includes(branch)) throw new Error('Unsupported branch: ' + branch);
-const label = (whiteSix ? 'w6' : '') + branch.toLowerCase(), isJ7 = branch === 'J7', independent = !!whiteSix || isJ7;
-const root = independent ? 'H8,I9,I8,H7,G10,' + branch : 'H8,I9,I8,H7,G10,G8,F9,' + branch;
+const branch = whiteFour || whiteSix || process.argv.find(arg => arg.startsWith('--branch='))?.split('=')[1].toUpperCase() || 'F10';
+if (!['F10', 'F11', 'H9', 'J7', 'G9', 'J8', 'G8'].includes(branch) || ['J8', 'G8'].includes(branch) && !whiteFour) throw new Error('Unsupported branch: ' + branch);
+const label = (whiteFour ? 'w4' : whiteSix ? 'w6' : '') + branch.toLowerCase(), isJ7 = branch === 'J7', independent = !!whiteFour || !!whiteSix || isJ7;
+const root = whiteFour ? 'H8,I9,I8,' + branch : independent ? 'H8,I9,I8,H7,G10,' + branch : 'H8,I9,I8,H7,G10,G8,F9,' + branch;
+const opening = whiteFour ? root.split(',') : OPENING;
 const rootWhitePly = root.split(',').length + 1;
 const bookLabel = independent ? label : 'g8', bookPath = `data/${bookLabel}.json`;
 const coveragePath = `data/${label}-coverage.json`, requestsPath = `data/${label}-requests.json`;
 function seedBranch() {
-  const moves = whiteSix ? root.split(',') : LESSONS.find(lesson => lesson.id === 'j7').moves, nodes = {};
+  const moves = whiteFour || whiteSix ? root.split(',') : LESSONS.find(lesson => lesson.id === 'j7').moves, nodes = {};
   for (let n = 4; n < moves.length; n++) nodes[moves.slice(0, n).join(',')] = {
     turn: n % 2 ? WHITE : BLACK, moves: { [moves[n]]: { kind: 'recorded' } }
   };
-  return { opening: OPENING, nodes, coverage: {} };
+  return { opening, nodes, coverage: {} };
 }
 const original = fs.existsSync(bookPath) ? JSON.parse(fs.readFileSync(bookPath, 'utf8')) : seedBranch();
 const requests = fs.existsSync(requestsPath) ? JSON.parse(fs.readFileSync(requestsPath, 'utf8')) : [];
@@ -168,8 +172,8 @@ async function expand(history) {
       proofMove = proofMoves.get(boardKey);
     }
     let candidates = proofMove ? [proofMove] : prior;
-    if (!proofMove && (history.length > 8 || whiteSix) && history.length <= 22) {
-      const r = await query(history, board, 3, whiteSix && history.length === 6 ? 45000 : 8000);
+    if (!proofMove && (history.length > 8 || whiteSix || whiteFour) && history.length <= 22) {
+      const r = await query(history, board, 3, (whiteSix || whiteFour) && history.length === root.split(',').length ? 45000 : 8000);
       const mates = r.candidates.filter(c => /^\+?M\d+$/.test(c.eval)).sort((a, b) => Number(a.eval.replace(/^\+?M/, '')) - Number(b.eval.replace(/^\+?M/, '')));
       candidates = [...new Set([...(mates.length ? mates.map(c => c.move) : prior.length ? prior : [r.move]), ...r.candidates.map(c => c.move)])];
     }
@@ -241,7 +245,7 @@ try {
     ...(Object.entries(reachableAudit).some(([key, entry]) => key.split(',').length === rootWhitePly && entry.candidates?.some(c => c.replyAnalysis)) ? { rootRefinement: { whiteSearchMs: rootWhiteMs, blackReplySearchMs: rootReplyMs, policy: 'Refine each of nine root candidates with an independent black search; use the shorter reported mate bound before applying the same six-ply band.' } } : {}),
     selections: Object.values(reachableAudit).reduce((counts, item) => { counts[item.selection] = (counts[item.selection] || 0) + 1; return counts; }, {})
   } };
-  console.log('Verified', JSON.stringify(verifyG8(published)));
+  console.log('Verified', JSON.stringify(verifyG8(published, opening)));
   fs.writeFileSync(bookPath, JSON.stringify(published));
   writeCompactG8(published, bookLabel);
   fs.writeFileSync(coveragePath, JSON.stringify({ version: BOOK_VERSION, label, root, policy: published.coverage[label], positions: reachableAudit }));

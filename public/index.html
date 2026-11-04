@@ -21,16 +21,16 @@
       <div class="section-label">本期定式 <span>01</span></div>
       <div id="lessons" class="lesson-list" aria-label="课程选择"></div>
       <div class="opening-card">
-        <div class="mini-board" aria-label="白二I9、黑一H8、黑三I8、白四H7"><b class="mini-white two">2</b><b class="mini-black one">1</b><b class="mini-black three">3</b><b class="mini-white four">4</b><i></i></div>
-        <strong>从中心对称形开始</strong>
-        <p>黑 H8 · I8<br>白 I9 · H7</p>
-        <span class="tag">白四 H7 · 桂马夹</span>
+        <div class="mini-board" aria-label="黑一H8、白二I9、黑三I8"><b class="mini-white two">2</b><b class="mini-black one">1</b><b class="mini-black three">3</b><i></i></div>
+        <strong>从前三手开始</strong>
+        <p>黑 H8 · I8<br>白 I9</p>
+        <span class="tag">白4 H7 · J8 · G8</span>
       </div>
       <div class="sidebar-footer"><span class="small-white"></span> 你执白 · 黑棋固定应对<br><small>云月实盘坐标 · 15 × 15</small></div>
     </aside>
     <section class="play-area" aria-label="练习棋盘">
-      <div class="board-heading"><div><div class="eyebrow">CHALLENGE <span id="lesson-number">01</span></div><h2 id="lesson-title">白6 防守挑战</h2></div><span class="rule-chip"><i></i> 有禁手</span></div>
-      <div class="board-topline"><span id="turn-label"><b class="small-white"></b> 正在载入棋谱</span><span id="move-label">第 4 手</span></div>
+      <div class="board-heading"><div><div class="eyebrow">CHALLENGE <span id="lesson-number">01</span></div><h2 id="lesson-title">白4 防守挑战</h2></div><span class="rule-chip"><i></i> 有禁手</span></div>
+      <div class="board-topline"><span id="turn-label"><b class="small-white"></b> 正在载入棋谱</span><span id="move-label">第 3 手</span></div>
       <div class="board-shell"><div id="board" class="board" role="grid" aria-label="15乘15五子棋棋盘，用方向键移动，回车落子"><svg class="grid-lines" viewBox="0 0 600 600" aria-hidden="true" id="grid-svg"></svg><div id="intersections"></div></div></div>
       <div class="board-legend"><span><i class="last-dot"></i> 最后一手</span><span><i class="hint-dot"></i> 可选防点</span><span><i class="forbidden-dot">×</i> 黑棋禁手</span></div>
       <div class="play-controls"><button id="undo" class="button light" title="撤回自己与黑棋的上一轮">↶ <span>悔棋</span></button><button id="hint" class="button primary">◉ 候选点标记</button><button id="reset" class="button light">↻ <span>重新挑战</span></button></div>
@@ -43,7 +43,7 @@
       <p class="coverage-note" id="coverage-note">从少量候选点中选择，黑棋按固定路线应对。</p>
       <div class="record-heading"><div class="section-label">落子记录</div><button id="export" class="text-button">导出 ↗</button></div>
       <div id="move-list" class="move-list" aria-label="逐手棋谱"></div>
-      <div class="replay-controls"><button id="first" aria-label="回到白四">|‹</button><button id="prev" aria-label="上一手">‹</button><span id="replay-position">4 / 4</span><button id="next" aria-label="下一手">›</button><button id="last" aria-label="回到最新一步">›|</button></div>
+      <div class="replay-controls"><button id="first" aria-label="回到白4选点前">|‹</button><button id="prev" aria-label="上一手">‹</button><span id="replay-position">3 / 3</span><button id="next" aria-label="下一手">›</button><button id="last" aria-label="回到最新一步">›|</button></div>
       <button id="demo" class="demo-button">▷ 演示当前变化</button>
       <div class="study-footer"><span>每一步，都有来处。</span><button id="sources-open" class="text-button">棋谱说明 ↗</button></div>
     </aside>
@@ -53,7 +53,7 @@
   <dialog id="sources-dialog">
     <form method="dialog"><button class="dialog-close" aria-label="关闭棋谱说明">×</button></form>
     <div class="eyebrow">ABOUT THIS CHALLENGE</div><h2>挑战范围</h2>
-    <p>前四手固定 H8、I9、I8、H7。黑5自动落在 G10，白6可选 G8、J7、H9、G9。悔棋或重新挑战，可以换一个白6防点。</p>
+    <p>前三手固定 H8、I9、I8，白4可选 H7、J8、G8。黑5自动应对。H7 后保留白6 G8、J7、H9、G9 四支；悔棋或重新挑战，可以换一个白4防点。</p>
     <p>后续每轮白棋有 1–9 个候选点，黑棋只保留一个固定应手。这里覆盖的是选定的防守分支，不是所有空点。不会改变后续杀法的冲四交换已省去。</p>
     <p>所有分支在黑棋首次形成合法四三时结束挑战，后续落子已截去；没有先形成四三而直接成五时，也会结束。四三需要一个四和一个真实活三，假活三与禁手不计。这是挑战的结束规则。</p>
     <p>原主线坐标参考励精连珠教室。新增候选来自离线连珠分析，并由本项目独立逐路径校验。</p>
