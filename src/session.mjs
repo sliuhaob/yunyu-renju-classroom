@@ -1,4 +1,4 @@
-import { OPENING, LESSONS, CHALLENGE, keyOf, BOOK_VERSION } from './book.mjs';
+import { OPENING, LESSONS, CHALLENGE, FLOWER_CHALLENGE, keyOf, BOOK_VERSION } from './book.mjs';
 import { BLACK, WHITE, playChallengeHistory as playHistory, coordOf, indexOf } from './renju.mjs';
 import g8 from '../data/g8-runtime.json' with { type: 'json' };
 import j7 from '../data/j7-runtime.json' with { type: 'json' };
@@ -6,10 +6,13 @@ import w6h9 from '../data/w6h9-runtime.json' with { type: 'json' };
 import w6g9 from '../data/w6g9-runtime.json' with { type: 'json' };
 import w4j8 from '../data/w4j8-runtime.json' with { type: 'json' };
 import w4g8 from '../data/w4g8-runtime.json' with { type: 'json' };
+import flowerH9 from '../data/flower-w4h9-runtime.json' with { type: 'json' };
 import { joinWhiteSixBooks, joinWhiteFourBooks } from './opening-book.mjs';
 export const whiteSixBooks = { G8: g8, J7: j7, H9: w6h9, G9: w6g9 };
 export const whiteFourBooks = { H7: joinWhiteSixBooks(Object.entries(whiteSixBooks)), J8: w4j8, G8: w4g8 };
 const openingBook = joinWhiteFourBooks(Object.entries(whiteFourBooks));
+export const flowerBooks = { H9: flowerH9 };
+const flowerBook = joinWhiteFourBooks(Object.entries(flowerBooks), FLOWER_CHALLENGE.opening);
 export class LessonError extends Error {
   constructor(message, status = 422, code = 'OUT_OF_BOOK') { super(message); this.status = status; this.code = code; }
 }
@@ -45,6 +48,7 @@ function resolve(book, history) {
 }
 export function getState(book, history, lessonId = CHALLENGE.id) {
   if (lessonId === CHALLENGE.id) return getCuratedState(history, CHALLENGE, openingBook);
+  if (lessonId === FLOWER_CHALLENGE.id) return getCuratedState(history, FLOWER_CHALLENGE, flowerBook);
   const lesson = LESSONS.find(l => l.id === lessonId);
   if (!lesson) throw new LessonError('课程不存在', 404, 'UNKNOWN_LESSON');
   return getCuratedState(history, lesson, lessonId === 'j7' ? j7 : g8);

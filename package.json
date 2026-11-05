@@ -22,7 +22,8 @@
     "expand:w6h9": "node scripts/expand-f10.mjs --white6=H9 && node scripts/prune-tempo-fours.mjs --book=w6h9",
     "expand:w6g9": "node scripts/expand-f10.mjs --white6=G9 && node scripts/prune-tempo-fours.mjs --book=w6g9",
     "expand:w4j8": "node scripts/expand-f10.mjs --white4=J8 && node scripts/prune-tempo-fours.mjs --book=w4j8",
-    "expand:w4g8": "node scripts/expand-f10.mjs --white4=G8 && node scripts/prune-tempo-fours.mjs --book=w4g8"
+    "expand:w4g8": "node scripts/expand-f10.mjs --white4=G8 && node scripts/prune-tempo-fours.mjs --book=w4g8",
+    "expand:flower": "node scripts/expand-f10.mjs --opening=flower --white4=H9 && node scripts/prune-tempo-fours.mjs --book=flower-w4h9"
   },
   "devDependencies": {
     "wrangler": "^4.0.0"

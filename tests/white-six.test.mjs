@@ -27,7 +27,7 @@ test('unified opening starts at white six and switches between all four books', 
     for (const alternative of state(start).choices) assert.equal(move(result.history.slice(0, 5), alternative).history[5], alternative);
   }
   const catalog = await (await worker.fetch(new Request('https://api.example/api/lessons'))).json();
-  assert.deepEqual(catalog.lessons.filter(l => !l.hidden).map(l => l.id), ['opening']);
+  assert.deepEqual(catalog.lessons.filter(l => !l.hidden).map(l => l.id), ['opening', 'flower']);
   assert.deepEqual(Object.keys(catalog.whiteSix), ['G8', 'J7', 'H9', 'G9']);
   const response = await worker.fetch(new Request('https://api.example/api/move', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ history: OPENING }) }));
   assert.equal(response.status, 200);

@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#244c42"><meta name="description" content="云雨月有禁手五子棋课堂。执白练防守，沿固定黑棋定式逐手学习。">
+  <meta name="theme-color" content="#244c42"><meta name="description" content="云雨月与花浦月有禁手五子棋课堂。执白练防守，沿固定黑棋定式逐手学习。">
   <title>云雨棋室 · 执白练习</title>
   <link rel="icon" href="./favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="./style.css">
   <script src="./config.js"></script><script type="module" src="./app.js"></script>
@@ -16,17 +16,17 @@
   <main>
     <aside class="course-sidebar">
       <div class="eyebrow">开局研习 / 01</div>
-      <h1>云雨月<span>执白挑战</span></h1>
+      <h1><span id="opening-name" class="opening-name">云雨月</span><span>执白挑战</span></h1>
       <p class="intro">换一个防点，<br>再试一次。</p>
-      <div class="section-label">本期定式 <span>01</span></div>
+      <div class="section-label">选择开局 <span>02</span></div>
       <div id="lessons" class="lesson-list" aria-label="课程选择"></div>
       <div class="opening-card">
-        <div class="mini-board" aria-label="黑一H8、白二I9、黑三I8"><b class="mini-white two">2</b><b class="mini-black one">1</b><b class="mini-black three">3</b><i></i></div>
+        <div id="mini-board" class="mini-board" aria-label="黑一H8、白二I9、黑三I8"><b class="mini-white two">2</b><b class="mini-black one">1</b><b class="mini-black three">3</b><i></i></div>
         <strong>从前三手开始</strong>
-        <p>黑 H8 · I8<br>白 I9</p>
-        <span class="tag">白4 H7 · J8 · G8</span>
+        <p id="opening-stones">黑 H8 · I8 / 白 I9</p>
+        <span class="tag" id="opening-tag">白4 H7 · J8 · G8</span>
       </div>
-      <div class="sidebar-footer"><span class="small-white"></span> 你执白 · 黑棋固定应对<br><small>云月实盘坐标 · 15 × 15</small></div>
+      <div class="sidebar-footer"><span class="small-white"></span> 你执白 · 黑棋固定应对<br><small id="opening-coordinates">云月实盘坐标 · 15 × 15</small></div>
     </aside>
     <section class="play-area" aria-label="练习棋盘">
       <div class="board-heading"><div><div class="eyebrow">CHALLENGE <span id="lesson-number">01</span></div><h2 id="lesson-title">白4 防守挑战</h2></div><span class="rule-chip"><i></i> 有禁手</span></div>
@@ -53,11 +53,11 @@
   <dialog id="sources-dialog">
     <form method="dialog"><button class="dialog-close" aria-label="关闭棋谱说明">×</button></form>
     <div class="eyebrow">ABOUT THIS CHALLENGE</div><h2>挑战范围</h2>
-    <p>前三手固定 H8、I9、I8，白4可选 H7、J8、G8。黑5自动应对。H7 后保留白6 G8、J7、H9、G9 四支；悔棋或重新挑战，可以换一个白4防点。</p>
+    <p id="opening-range">前三手固定 H8、I9、I8，白4可选 H7、J8、G8。黑5自动应对。H7 后保留白6 G8、J7、H9、G9 四支；悔棋或重新挑战，可以换一个白4防点。</p>
     <p>后续每轮白棋有 1–9 个候选点，黑棋只保留一个固定应手。这里覆盖的是选定的防守分支，不是所有空点。不会改变后续杀法的冲四交换已省去。</p>
     <p>所有分支在黑棋首次形成合法四三时结束挑战，后续落子已截去；没有先形成四三而直接成五时，也会结束。四三需要一个四和一个真实活三，假活三与禁手不计。这是挑战的结束规则。</p>
     <p>原主线坐标参考励精连珠教室。新增候选来自离线连珠分析，并由本项目独立逐路径校验。</p>
-    <a href="https://www.ljrenju.com/croom/i06/i06ba.htm" target="_blank" rel="noreferrer">定式参考 ↗</a>
+    <a id="opening-source" href="https://www.ljrenju.com/croom/i06/i06ba.htm" target="_blank" rel="noreferrer">定式参考 ↗</a>
     <p id="book-stats"></p>
   </dialog>
 </body>

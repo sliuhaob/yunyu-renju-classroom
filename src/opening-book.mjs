@@ -3,7 +3,7 @@ import { FIXED_OPENING } from './book.mjs';
 
 // Each entry starts after its white-four move. Keep every downstream node and
 // edge unchanged, and add only the shared three-stone choice node.
-export function joinWhiteFourBooks(entries) {
+export function joinWhiteFourBooks(entries, opening = FIXED_OPENING) {
   const nodes = [], choices = [], stats = { latestEndPly: 0, terminalPaths: 0 };
   let remaining = 0;
   for (const [move, book] of entries) {
@@ -14,7 +14,7 @@ export function joinWhiteFourBooks(entries) {
     stats.latestEndPly = Math.max(stats.latestEndPly, book.stats.latestEndPly);
     stats.terminalPaths += book.stats.terminalPaths;
   }
-  return { opening: FIXED_OPENING, root: nodes.push([remaining, ...choices]) - 1, nodes, stats };
+  return { opening, root: nodes.push([remaining, ...choices]) - 1, nodes, stats };
 }
 
 // Join the four precomputed strategies at white six. Only the shared entry

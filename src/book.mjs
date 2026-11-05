@@ -1,15 +1,22 @@
-export const BOOK_VERSION = "2026-11-04.1";
+export const BOOK_VERSION = "2026-11-04.2";
 export const FIXED_OPENING = ['H8', 'I9', 'I8'];
+export const FLOWER_OPENING = ['H8', 'I8', 'I9'];
 // Archived H7 books keep their four-stone root.
 export const OPENING = [...FIXED_OPENING, 'H7'];
 export const SOURCES = [
   { title: '励精连珠教室 · 云月白4 H7、黑5 G10', url: 'https://www.ljrenju.com/croom/i06/i06ba.htm' },
-  { title: 'RIF 国际连珠规则 · 第9条', url: 'https://gomoku.renju.net/rifrules/' }
+  { title: 'RIF 国际连珠规则 · 第9条', url: 'https://gomoku.renju.net/rifrules/' },
+  { title: '励精连珠教室 · 花月棋形', url: 'https://www.ljrenju.com/croom/d04/d04.htm' }
 ];
 export const CHALLENGE = {
-  id: 'opening', name: '白4 防守挑战', subtitle: 'H7 · J8 · G8',
+  id: 'opening', name: '云雨月', subtitle: '白4 H7 · J8 · G8', opening: FIXED_OPENING,
   description: '前三手固定 H8、I9、I8，从白4选择防点。黑棋首次形成合法四三或成五时结束。',
   source: SOURCES[0].url
+};
+export const FLOWER_CHALLENGE = {
+  id: 'flower', name: '花浦月', subtitle: '白4 H9', opening: FLOWER_OPENING,
+  description: '前三手 H8、I8、I9，采用花月棋形，从白4 H9 开始。黑棋首次形成合法四三或成五时结束。',
+  source: SOURCES[2].url
 };
 // Move coordinates are transcribed factual variations; all prose and artwork are original.
 // Both records use the actual Cloud Moon board. Do not translate to Rain Moon:
