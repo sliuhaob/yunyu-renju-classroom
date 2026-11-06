@@ -7,11 +7,13 @@ import w6g9 from '../data/w6g9-runtime.json' with { type: 'json' };
 import w4j8 from '../data/w4j8-runtime.json' with { type: 'json' };
 import w4g8 from '../data/w4g8-runtime.json' with { type: 'json' };
 import flowerH9 from '../data/flower-w4h9-runtime.json' with { type: 'json' };
+import flowerG7 from '../data/flower-w4g7-runtime.json' with { type: 'json' };
+import flowerH10 from '../data/flower-w4h10-runtime.json' with { type: 'json' };
 import { joinWhiteSixBooks, joinWhiteFourBooks } from './opening-book.mjs';
 export const whiteSixBooks = { G8: g8, J7: j7, H9: w6h9, G9: w6g9 };
 export const whiteFourBooks = { H7: joinWhiteSixBooks(Object.entries(whiteSixBooks)), J8: w4j8, G8: w4g8 };
 const openingBook = joinWhiteFourBooks(Object.entries(whiteFourBooks));
-export const flowerBooks = { H9: flowerH9 };
+export const flowerBooks = { H9: flowerH9, G7: flowerG7, H10: flowerH10 };
 const flowerBook = joinWhiteFourBooks(Object.entries(flowerBooks), FLOWER_CHALLENGE.opening);
 export class LessonError extends Error {
   constructor(message, status = 422, code = 'OUT_OF_BOOK') { super(message); this.status = status; this.code = code; }

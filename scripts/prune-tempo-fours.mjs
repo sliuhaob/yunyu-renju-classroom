@@ -105,7 +105,7 @@ export function prunePass(book, coverages = {}, previous = { nodes: [], position
 
 function main() {
   const label = process.argv.find(arg => arg.startsWith('--book='))?.split('=')[1] || 'g8';
-  assert.ok(['g8', 'j7', 'w6h9', 'w6g9', 'w4j8', 'w4g8', 'flower-w4h9'].includes(label), 'Unknown book');
+  assert.ok(['g8', 'j7', 'w6h9', 'w6g9', 'w4j8', 'w4g8', 'flower-w4h9', 'flower-w4g7', 'flower-w4h10'].includes(label), 'Unknown book');
   const prefix = label === 'g8' ? '' : label + '-';
   const proofPath = `data/${prefix}tempo-four-pruning.json`;
   let book = JSON.parse(fs.readFileSync(`data/${label}.json`, 'utf8'));

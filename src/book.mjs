@@ -1,4 +1,4 @@
-export const BOOK_VERSION = "2026-11-04.2";
+export const BOOK_VERSION = "2026-11-05.1";
 export const FIXED_OPENING = ['H8', 'I9', 'I8'];
 export const FLOWER_OPENING = ['H8', 'I8', 'I9'];
 // Archived H7 books keep their four-stone root.
@@ -14,8 +14,8 @@ export const CHALLENGE = {
   source: SOURCES[0].url
 };
 export const FLOWER_CHALLENGE = {
-  id: 'flower', name: '花浦月', subtitle: '白4 H9', opening: FLOWER_OPENING,
-  description: '前三手 H8、I8、I9，采用花月棋形，从白4 H9 开始。黑棋首次形成合法四三或成五时结束。',
+  id: 'flower', name: '花浦月', subtitle: '白4 H9 · G7 · H10', opening: FLOWER_OPENING,
+  description: '前三手 H8、I8、I9，采用花月棋形，从白4 H9、G7、H10 选择防点。黑棋首次形成合法四三或成五时结束。',
   source: SOURCES[2].url
 };
 // Move coordinates are transcribed factual variations; all prose and artwork are original.

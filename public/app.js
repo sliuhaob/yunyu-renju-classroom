@@ -86,7 +86,7 @@ function render() {
   $('opening-stones').textContent = flower ? '黑 H8 · I9 / 白 I8' : '黑 H8 · I8 / 白 I9';
   $('opening-tag').textContent = lesson.subtitle;
   $('opening-coordinates').textContent = flower ? '花月实盘坐标 · 15 × 15' : '云月实盘坐标 · 15 × 15';
-  $('opening-range').textContent = flower ? '前三手固定 H8、I8、I9。本次先收录白4 H9，黑5自动应对。可切回云雨月尝试原有分支。' : '前三手固定 H8、I9、I8，白4可选 H7、J8、G8。黑5自动应对。H7 后保留白6 G8、J7、H9、G9 四支。';
+  $('opening-range').textContent = flower ? '前三手固定 H8、I8、I9，白4可选 H9、G7、H10，黑5自动应对。可切回云雨月尝试原有分支。' : '前三手固定 H8、I9、I8，白4可选 H7、J8、G8。黑5自动应对。H7 后保留白6 G8、J7、H9、G9 四支。';
   $('opening-source').href = lesson.source;
   const stats = flower ? catalog.flowerWhiteFour : catalog.whiteFour;
   $('book-stats').textContent = '棋谱版本 ' + catalog.version + ' · ' + Object.entries(stats).map(([move, value]) => '白4 ' + move + '：' + value.terminalPaths + ' 条挑战路线').join('；') + '。';

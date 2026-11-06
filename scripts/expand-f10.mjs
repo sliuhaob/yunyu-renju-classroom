@@ -12,12 +12,12 @@ const openingKind = process.argv.find(arg => arg.startsWith('--opening='))?.spli
 if (!['cloud', 'flower'].includes(openingKind)) throw new Error('Unsupported opening');
 const flower = openingKind === 'flower';
 const whiteFour = process.argv.find(arg => arg.startsWith('--white4='))?.split('=')[1].toUpperCase();
-if (flower && whiteFour !== 'H9' || whiteFour && !(flower ? ['H9'] : ['J8', 'G8']).includes(whiteFour)) throw new Error('Unsupported white four: ' + whiteFour);
+if (flower && !['H9', 'G7', 'H10'].includes(whiteFour) || whiteFour && !(flower ? ['H9', 'G7', 'H10'] : ['J8', 'G8']).includes(whiteFour)) throw new Error('Unsupported white four: ' + whiteFour);
 const whiteSix = process.argv.find(arg => arg.startsWith('--white6='))?.split('=')[1].toUpperCase();
 if (whiteFour && whiteSix) throw new Error('Choose one opening branch');
 if (whiteSix && !['H9', 'G9'].includes(whiteSix)) throw new Error('Unsupported white six: ' + whiteSix);
 const branch = whiteFour || whiteSix || process.argv.find(arg => arg.startsWith('--branch='))?.split('=')[1].toUpperCase() || 'F10';
-if (!['F10', 'F11', 'H9', 'J7', 'G9', 'J8', 'G8'].includes(branch) || ['J8', 'G8'].includes(branch) && !whiteFour) throw new Error('Unsupported branch: ' + branch);
+if (!whiteFour && !['F10', 'F11', 'H9', 'J7', 'G9'].includes(branch)) throw new Error('Unsupported branch: ' + branch);
 const label = (flower ? 'flower-' : '') + (whiteFour ? 'w4' : whiteSix ? 'w6' : '') + branch.toLowerCase(), isJ7 = branch === 'J7', independent = !!whiteFour || !!whiteSix || isJ7;
 const root = whiteFour ? (flower ? 'H8,I8,I9,' : 'H8,I9,I8,') + branch : independent ? 'H8,I9,I8,H7,G10,' + branch : 'H8,I9,I8,H7,G10,G8,F9,' + branch;
 const opening = whiteFour ? root.split(',') : OPENING;
