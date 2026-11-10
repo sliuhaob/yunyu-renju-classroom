@@ -5,7 +5,7 @@ import proof from '../data/double-four-three-coverage.json' with { type: 'json' 
 import { BLACK, WHITE, indexOf, analyzeMove, winningMoves } from '../src/renju.mjs';
 import { getState, advance } from '../src/session.mjs';
 import { boardOf } from '../scripts/tempo-fours.mjs';
-import { fourThreeDefenses, missingFourThreeSides, selectOppositeDefenses } from '../scripts/double-four-three.mjs';
+import { attackKind, fourThreeDefenses, missingFourThreeSides, selectOppositeDefenses } from '../scripts/double-four-three.mjs';
 import { fillFourThreeSides } from '../scripts/augment-double-four-three.mjs';
 import { trimG8Book } from '../scripts/trim-books.mjs';
 import { verifyG8 } from '../scripts/verify-g8.mjs';
@@ -33,11 +33,13 @@ test('pictured menu formerly covered only H10, and five direct D7 blocks are now
 test('nine-choice cap reserves defenses for both sides before filling duplicate-side blocks', () => {
   const h = 'H8 I9 I8 H7 G10 G8 F9 F10 H11 I12 H9 F11 J6 J7 K7 K8 I5 L8 I7 K5 I6 I4 H6 G6 G5 J8 F6 E7 F5'.split(' ');
   const a = fourThreeDefenses(boardOf(h)), base = ['H5', 'E5', 'J5'];
-  assert.deepEqual(a.threats, ['F8', 'F4']);
+  // H5 is an open four, which now counts as an attack of its own.
+  assert.deepEqual(a.threats, ['F8', 'H5', 'F4']);
   const selected = selectOppositeDefenses(a, base);
-  assert.equal(base.length + selected.length, 9);
-  assert.ok(selected.some(d => d.move === 'F8'));
-  assert.ok(selected.some(d => d.move === 'F4'));
+  // M8 and N8 also block but are fours, so they do not take a slot. H5 now stops F8
+  // because White's block of that four-three would make a four.
+  assert.deepEqual(selected.map(d => d.move), ['F4', 'F7', 'E3', 'F3', 'F2']);
+  assert.ok(selected.every(d => !d.four));
   assert.deepEqual(missingFourThreeSides(a, [...base, ...selected.map(d => d.move)]), []);
 });
 
@@ -53,9 +55,8 @@ test('every added defense blocks a real threat and leaves its recorded reply leg
     const b = boardOf(key.split(','));
     for (const d of entry.added) {
       b[indexOf(d.move)] = WHITE;
-      for (const target of d.stops) assert.ok(!analyzeMove(b, indexOf(target), BLACK).fourThree);
-      const response = analyzeMove(b, indexOf(d.reply), BLACK);
-      assert.ok(response.legal && response.fourThree);
+      for (const target of d.stops) assert.equal(attackKind(b, indexOf(target)), null);
+      assert.equal(attackKind(b, indexOf(d.reply)), d.finish);
       b[indexOf(d.reply)] = BLACK;
       assert.deepEqual(winningMoves(b, WHITE), []);
       b[indexOf(d.reply)] = 0; b[indexOf(d.move)] = 0;

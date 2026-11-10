@@ -4,15 +4,15 @@ import g8 from '../data/g8.json' with { type: 'json' };
 import legacy from '../data/responses.json' with { type: 'json' };
 import proof from '../data/double-four-three-coverage.json' with { type: 'json' };
 import { BOOK_VERSION } from '../src/book.mjs';
-import { BLACK, WHITE, analyzeMove, indexOf, winningMoves } from '../src/renju.mjs';
+import { BLACK, WHITE, indexOf, winningMoves } from '../src/renju.mjs';
 import { boardOf } from './tempo-fours.mjs';
-import { fourThreeDefenses, missingFourThreeSides } from './double-four-three.mjs';
+import { attackKind, fourThreeDefenses, missingFourThreeSides } from './double-four-three.mjs';
 import { OPPOSITE_KIND, oppositePolicy } from './augment-double-four-three.mjs';
 
 export function verifyOppositeSides(progress = () => {}, tree = g8, evidence = proof, legacyBook = legacy) {
   const g8 = tree, proof = evidence;
   assert.equal(proof.version, BOOK_VERSION);
-  assert.equal(proof.format, 'opposite-four-three-v1');
+  assert.equal(proof.format, 'opposite-four-three-v2');
   assert.equal(proof.policy, oppositePolicy);
   const cache = new Map(), byBranch = {};
   let whitePositions = 0, multiThreatPositions = 0, augmentedPositions = 0, addedChoices = 0;
@@ -31,7 +31,7 @@ export function verifyOppositeSides(progress = () => {}, tree = g8, evidence = p
     if (generated.length || entry) {
       assert.ok(entry && generated.length);
       assert.deepEqual(entry.threats, analysis.threats);
-      assert.ok(entry.threats.length >= 2);
+      assert.ok(entry.threats.length >= 1);
       assert.deepEqual(entry.baseMoves, moves.filter(move => !generated.includes(move)));
       assert.deepEqual(entry.added.map(d => d.move), generated);
       assert.ok(moves.length <= 9);
@@ -42,12 +42,12 @@ export function verifyOppositeSides(progress = () => {}, tree = g8, evidence = p
         assert.ok(!d.stops.includes(d.reply));
         assert.deepEqual(Object.keys(g8.nodes[key + ',' + d.move].moves), [d.reply]);
         board[indexOf(d.move)] = WHITE;
-        const response = analyzeMove(board, indexOf(d.reply), BLACK);
-        assert.ok(response.legal && response.fourThree);
+        const finish = attackKind(board, indexOf(d.reply));
+        assert.equal(finish, d.finish);
         board[indexOf(d.reply)] = BLACK;
         assert.deepEqual(winningMoves(board, WHITE), []);
         board[indexOf(d.reply)] = 0; board[indexOf(d.move)] = 0;
-        assert.ok(!g8.nodes[key + ',' + d.move + ',' + d.reply], 'Continuation after four-three');
+        assert.equal(!!g8.nodes[key + ',' + d.move + ',' + d.reply], finish === 'open-four', 'Finish does not match its recorded continuation');
         addedChoices++;
       }
       augmentedPositions++;

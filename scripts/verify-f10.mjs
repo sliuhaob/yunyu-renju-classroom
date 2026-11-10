@@ -10,6 +10,7 @@ import { playChallengeHistory } from '../src/renju.mjs';
 import { screenWhite } from './f10-candidates.mjs';
 import { continuationVerifier } from './tempo-fours.mjs';
 import { verifyGraftedMenu } from './verify-tempo-fours.mjs';
+import { pointlessFour } from './vcf-engine.mjs';
 
 export function verifyF10(onProgress = () => {}) {
   assert.equal(coverage.root, 'H8,I9,I8,H7,G10,G8,F9,F10');
@@ -45,8 +46,13 @@ export function verifyExpandedBranch(coverage, requests = [], onProgress = () =>
     assert.deepEqual(entry.omittedTempoFours || [], omitted);
     const added = (opposite.positions[key]?.added || []).map(item => item.move);
     assert.deepEqual(entry.oppositeFourThreeMoves || [], added);
-    const screenedMoves = [...entry.moves.filter(move => !added.includes(move)), ...omitted];
     const { board } = playChallengeHistory(key.split(',')), boardKey = board.join('');
+    // A left-out four needs a reason that still holds. Unclosed moves have no book
+    // route and side-evicted moves gave up their slot; both stay on the record.
+    const dropped = (entry.omittedFours || []).map(item => item.move);
+    for (const { move, reason } of entry.omittedFours || []) assert.equal(pointlessFour(board, move), reason, 'Dropped four is no longer pointless: ' + key + ',' + move);
+    const set = [...dropped, ...omitted, ...(entry.unclosedMoves || []), ...(entry.sideEvictedMoves || [])];
+    const screenedMoves = [...new Set([...entry.moves.filter(move => !added.includes(move)), ...set])];
     let screen = screens.get(boardKey);
     if (!screen) { screen = screenWhite(board); screens.set(boardKey, screen); }
     assert.equal(entry.mode, screen.mode);
@@ -55,14 +61,14 @@ export function verifyExpandedBranch(coverage, requests = [], onProgress = () =>
     if (entry.selection === 'tempo-replay') {
       verifyGraftedMenu(key, replay, g8, pruning, opposite);
     } else if (entry.selection === 'all-forced' || entry.selection === 'all-tactical-survivors') {
-      assert.deepEqual([...screenedMoves].sort(), [...screen.candidates].sort(), 'A viable tactical defense was omitted without a tempo-four proof: ' + key);
+      assert.deepEqual(screenedMoves.filter(move => !dropped.includes(move) || screen.candidates.includes(move)).sort(), [...screen.candidates].sort(), 'A viable tactical defense was omitted without a tempo-four proof: ' + key);
     } else if (entry.selection === 'engine-ranked') {
-      assert.ok(screen.candidates.length > 9);
+      assert.ok(screen.candidates.filter(move => !set.includes(move)).length > 9);
       assert.ok(entry.candidates.length > 0);
-      assert.ok(screenedMoves.every(move => screen.candidates.includes(move)));
+      assert.ok(entry.moves.filter(move => !added.includes(move)).every(move => screen.candidates.includes(move)));
     } else {
       assert.equal(entry.selection, 'terminal-examples');
-      assert.equal(screen.candidates.length, 0);
+      assert.deepEqual(screen.candidates.filter(move => !set.includes(move)), []);
     }
     checked += screen.checked;
     if (++completed % 10000 === 0) onProgress({ completed, total: positions.length, uniqueBoards: screens.size });

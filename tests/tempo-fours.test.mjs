@@ -13,7 +13,8 @@ import { verifyG8 } from '../scripts/verify-g8.mjs';
 const pictured = 'H8 I9 I8 H7 G10 G8 F9 H9 F10 E11 E10 D10 H11 I12 F8 F7 I10 H10 G12'.split(' ');
 
 test('pictured E6/D5 singleton is omitted and both real defenses end at black21 F11', () => {
-  assert.deepEqual(getState(book, pictured, 'main').choices, ['J9', 'F13']);
+  // The later choices are direct blocks of the attacks J9 and F13 leave open.
+  assert.deepEqual(getState(book, pictured, 'main').choices, ['J9', 'F13', 'F11', 'F12', 'G11', 'E13', 'G13', 'H13', 'D9']);
   const evidence = proof.positions[pictured.join(',')].find(item => item.move === 'E6');
   assert.equal(evidence.reply, 'D5');
   assert.equal(evidence.grafted, true);

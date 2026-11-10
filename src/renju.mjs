@@ -126,9 +126,28 @@ export function playHistory(history, { stopAtFourThree = false } = {}) {
     if (!analysis.legal) throw new Error(`第 ${i + 1} 手 ${history[i]} 非法：${analysis.reason}`);
     board[p] = color;
     if (analysis.win) outcome = { winner: color, line: analysis.line, reason: 'five' };
-    else if (stopAtFourThree && color === BLACK && analysis.fourThree) outcome = { winner: BLACK, line: analysis.fourThreeLine, reason: 'four-three', trainingStop: true };
+    else if (stopAtFourThree && color === BLACK && analysis.fourThree && fourThreeStands(board)) outcome = { winner: BLACK, line: analysis.fourThreeLine, reason: 'four-three', trainingStop: true };
   }
   return { board, outcome };
+}
+// A four-three only ends the challenge when White has no answer to it: no White
+// five on the board, and White's forced block does not itself make a White four.
+// Call with Black's stone already placed.
+export function fourThreeStands(board) {
+  if (winningMoves(board, WHITE).length) return false;
+  const fives = winningMoves(board, BLACK);
+  if (fives.length !== 1) return fives.length > 1;
+  board[fives[0]] = WHITE;
+  const counter = winningMoves(board, WHITE).length > 0;
+  board[fives[0]] = 0;
+  return !counter;
+}
+export function standingFourThree(board, pos, analysis = analyzeMove(board, pos, BLACK)) {
+  if (!analysis.legal || !analysis.fourThree) return false;
+  board[pos] = BLACK;
+  const stands = fourThreeStands(board);
+  board[pos] = 0;
+  return stands;
 }
 // Challenge completion is separate from a five-in-a-row win under RIF rules.
 export function playChallengeHistory(history) { return playHistory(history, { stopAtFourThree: true }); }

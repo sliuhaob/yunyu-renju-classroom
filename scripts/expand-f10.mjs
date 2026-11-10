@@ -4,8 +4,12 @@ import { vcf } from './tactics.mjs';
 import { trimG8Book } from './trim-books.mjs';
 import { writeCompactG8 } from './compact-g8.mjs';
 import { verifyG8 } from './verify-g8.mjs';
-import { immediateFinish, screenWhite, rankedDefenses } from './f10-candidates.mjs';
-import { BLACK, WHITE, playChallengeHistory, analyzeMove, indexOf, coordOf } from '../src/renju.mjs';
+import { immediateFinish, screenWhite, rankedDefenses, usableMoves, MENU_POLICY } from './f10-candidates.mjs';
+import { continuationVerifier, redundantFour } from './tempo-fours.mjs';
+import { fourThreeDefenses, missingFourThreeSides } from './double-four-three.mjs';
+import { OPPOSITE_KIND } from './augment-double-four-three.mjs';
+import { blackVcfMove, byResistance, whiteForcedWin } from './vcf-engine.mjs';
+import { BLACK, WHITE, playChallengeHistory, analyzeMove, indexOf, coordOf, standingFourThree } from '../src/renju.mjs';
 import { BOOK_VERSION, OPENING, LESSONS } from '../src/book.mjs';
 
 const openingKind = process.argv.find(arg => arg.startsWith('--opening='))?.split('=')[1] || 'cloud';
@@ -17,7 +21,7 @@ const whiteSix = process.argv.find(arg => arg.startsWith('--white6='))?.split('=
 if (whiteFour && whiteSix) throw new Error('Choose one opening branch');
 if (whiteSix && !['H9', 'G9'].includes(whiteSix)) throw new Error('Unsupported white six: ' + whiteSix);
 const branch = whiteFour || whiteSix || process.argv.find(arg => arg.startsWith('--branch='))?.split('=')[1].toUpperCase() || 'F10';
-if (!whiteFour && !['F10', 'F11', 'H9', 'J7', 'G9'].includes(branch)) throw new Error('Unsupported branch: ' + branch);
+if (!whiteFour && !['F10', 'F11', 'H9', 'H11', 'J7', 'G9'].includes(branch)) throw new Error('Unsupported branch: ' + branch);
 const label = (flower ? 'flower-' : '') + (whiteFour ? 'w4' : whiteSix ? 'w6' : '') + branch.toLowerCase(), isJ7 = branch === 'J7', independent = !!whiteFour || !!whiteSix || isJ7;
 const root = whiteFour ? (flower ? 'H8,I8,I9,' : 'H8,I9,I8,') + branch : independent ? 'H8,I9,I8,H7,G10,' + branch : 'H8,I9,I8,H7,G10,G8,F9,' + branch;
 const opening = whiteFour ? root.split(',') : OPENING;
@@ -35,6 +39,18 @@ const original = fs.existsSync(bookPath) ? JSON.parse(fs.readFileSync(bookPath, 
 const requests = fs.existsSync(requestsPath) ? JSON.parse(fs.readFileSync(requestsPath, 'utf8')) : [];
 const requestedMoves = new Map(requests.map(({ history, moves }) => [history.join(','), moves]));
 const requestedOnly = process.argv.includes('--requested-only');
+// Repair keeps every recorded menu and reply that still passes the rules, asks the
+// engine only about what changed, and writes artifacts/<label>-repair.json for
+// scripts/finish-repair.mjs instead of touching data/.
+const repair = process.argv.includes('--repair');
+const REPAIR_BUDGET = Number(process.env.REPAIR_BUDGET || 1500);
+class BudgetExceeded extends Error {}
+const NO_PROPOSAL = { move: null, candidates: [] };
+const storedAudit = repair && fs.existsSync(coveragePath) ? JSON.parse(fs.readFileSync(coveragePath, 'utf8')).positions : {};
+const tempoPath = `data/${bookLabel === 'g8' ? '' : bookLabel + '-'}tempo-four-pruning.json`;
+const tempoProof = repair && fs.existsSync(tempoPath) ? JSON.parse(fs.readFileSync(tempoPath, 'utf8')) : { nodes: [], positions: {} };
+const tempoReplay = continuationVerifier(tempoProof.nodes);
+const unresolved = [];
 const nodes = {}, audit = {}, screens = new Map(), proofMoves = new Map(), mateHints = new Map();
 const engines = Array.from({ length: Number(process.env.RENJU_ENGINES || 4) }, () => new Rapfi()), idleEngines = [...engines], waitingEngines = [], inFlight = new Map();
 let spareLanes = engines.length - 1;
@@ -109,21 +125,70 @@ async function query(history, board, count, ms = engineMs) {
   return job;
 }
 function put(history, moves, kind) {
-  nodes[history.join(',')] = { turn: history.length % 2 ? WHITE : BLACK, moves: Object.fromEntries(moves.map(m => [m, { kind }])) };
+  const prior = repair ? original.nodes[history.join(',')]?.moves || {} : {};
+  nodes[history.join(',')] = { turn: history.length % 2 ? WHITE : BLACK, moves: Object.fromEntries(moves.map(m => [m, prior[m] && prior[m].kind !== OPPOSITE_KIND ? prior[m] : { kind }])) };
   if (++completed % 1000 === 0) { save(); console.log('Closed nodes', completed, 'ply', history.length, 'last', history.slice(-5).join(' ')); }
 }
-async function expandDefenses(history, moves) {
+async function expandDefenses(history, moves, budgetFor = () => undefined, mayDrop = false) {
+  const failed = new Map();
+  const attempt = async move => {
+    try { await expand([...history, move], budgetFor(move)); }
+    catch (error) { if (!mayDrop) throw error; failed.set(move, error.message); }
+  };
   const parallel = [], sequential = [moves[0]];
   for (const move of moves.slice(1)) {
     if (spareLanes > 0) {
       spareLanes--;
-      parallel.push(expand([...history, move]).finally(() => { spareLanes++; }));
+      parallel.push(attempt(move).finally(() => { spareLanes++; }));
     } else sequential.push(move);
   }
-  const serial = (async () => { for (const move of sequential) await expand([...history, move]); })();
+  const serial = (async () => { for (const move of sequential) await attempt(move); })();
   const results = await Promise.allSettled([serial, ...parallel]);
   const failure = results.find(result => result.status === 'rejected');
   if (failure) throw failure.reason;
+  for (const [move, error] of failed) {
+    unresolved.push({ history: history.join(','), move, error: error.slice(0, 300) });
+    console.log('Unclosed white move', history.length + 1, move, error.slice(0, 160));
+  }
+  return moves.filter(move => !failed.has(move));
+}
+function finishes(board, move) {
+  const p = indexOf(move), a = analyzeMove(board, p, BLACK);
+  return a.legal && (a.win || standingFourThree(board, p, a));
+}
+// One selection path for fresh builds and repairs. Pointless fours leave before
+// anything is counted or ranked, so they cannot use up slots or set the band.
+async function chooseDefenses(key, history, board, screen, existing) {
+  if (screen.mode === 'forced') return { moves: screen.candidates, selection: 'all-forced', proposal: NO_PROPOSAL, dropped: {} };
+  const keep = requestedMoves.get(key) || [];
+  const omitted = (tempoProof.positions[key] || []).filter(item => redundantFour(board, item.move, item.reply, item.suffix, tempoReplay)).map(item => item.move);
+  const filtered = usableMoves(board, screen.candidates, { keep, omitted }), kept = usableMoves(board, existing, { keep, omitted });
+  const survivors = filtered.usable, dropped = { ...filtered.dropped, ...kept.dropped };
+  const narrowed = { ...screen, mode: survivors.length ? 'defense' : 'unavoidable', candidates: survivors };
+  let proposal = NO_PROPOSAL;
+  if (!survivors.length || survivors.length > 9) {
+    const stored = storedAudit[key]?.candidates;
+    if (stored?.length) proposal = { move: stored[0].move, candidates: stored.map(c => ({ ...c, eval: c.evaluation })) };
+    else {
+      proposal = await query(history, board, 9, history.length === rootWhitePly ? rootWhiteMs : engineMs);
+      if (history.length === rootWhitePly && rootReplyMs && proposal.candidates.length) proposal = await refineRootProposal(history, board, proposal);
+    }
+  }
+  const offered = usableMoves(board, [...new Set([proposal.move, ...proposal.candidates.map(c => c.move)])].filter(Boolean), { keep, omitted }).usable;
+  const ranked = { ...proposal, move: offered.includes(proposal.move) ? proposal.move : null, candidates: proposal.candidates.filter(c => offered.includes(c.move)) };
+  let moves = rankedDefenses(narrowed, ranked, kept.usable);
+  const attacks = fourThreeDefenses(board);
+  if (!moves.length && survivors.length) moves = byResistance(board, survivors).slice(0, 3);
+  if (!moves.length) moves = byResistance(board, attacks.defenses.filter(d => !d.four).map(d => d.move)).slice(0, 3);
+  if (!moves.length) { moves = existing; for (const move of moves) delete dropped[move]; }
+  // A survivor that stops a next-move kill outright comes before anything that ignores it.
+  for (let missing = missingFourThreeSides(attacks, moves); missing.length && moves.length < 9; missing = missingFourThreeSides(attacks, moves)) {
+    const covers = d => d.stops.filter(s => missing.includes(s)).length;
+    const best = attacks.defenses.filter(d => survivors.includes(d.move) && !moves.includes(d.move) && covers(d)).sort((a, b) => covers(b) - covers(a))[0];
+    if (!best) break;
+    moves = [...moves, best.move];
+  }
+  return { moves, proposal, dropped, selection: survivors.length > 9 ? 'engine-ranked' : survivors.length ? 'all-tactical-survivors' : 'terminal-examples' };
 }
 async function refineRootProposal(history, board, proposal) {
   // Multi-PV can overestimate resistance when one black reply has not been
@@ -152,19 +217,22 @@ function includeRequested(history, board, moves) {
   if (combined.length > 9) throw new Error('More than nine requested/selected defenses: ' + history.join(','));
   return combined;
 }
-async function expand(history) {
+async function expand(history, budget) {
   const key = history.join(',');
   if (nodes[key]) return;
+  if (budget && --budget.left < 0) throw new BudgetExceeded('Repair budget exhausted: ' + key);
   const { board, outcome } = playChallengeHistory(history);
   if (outcome) { if (outcome.winner !== BLACK) throw new Error('White wins: ' + key); return; }
   if (history.length >= 69) throw new Error('Unclosed at ply limit: ' + key);
   if (history.length % 2 === 0) {
+    const prior = Object.keys(original.nodes[key]?.moves || {});
+    if (repair && prior.length && finishes(board, prior[0])) { put(history, prior, 'preserved-reply'); return; }
     const finish = immediateFinish(board);
     if (finish) { put(history, [finish.move], 'immediate-' + finish.reason); return; }
-    const prior = Object.keys(original.nodes[key]?.moves || {});
     const boardKey = board.join('');
+    const search = repair ? !prior.length : !prior.length || history.length <= 22;
     let proofMove = null;
-    if (!prior.length || history.length <= 22) {
+    if (search) {
       const engineKey = boardKey + ':0:3:' + engineMs;
       if (!proofMoves.has(boardKey)) {
         // A cached normal engine query means the identical VCF search already
@@ -175,7 +243,7 @@ async function expand(history) {
       proofMove = proofMoves.get(boardKey);
     }
     let candidates = proofMove ? [proofMove] : prior;
-    if (!proofMove && (history.length > 8 || whiteSix || whiteFour) && history.length <= 22) {
+    if (search && !proofMove && (history.length > 8 || whiteSix || whiteFour) && history.length <= 22) {
       const r = await query(history, board, 3, (whiteSix || whiteFour) && history.length === root.split(',').length ? 45000 : 8000);
       const mates = r.candidates.filter(c => /^\+?M\d+$/.test(c.eval)).sort((a, b) => Number(a.eval.replace(/^\+?M/, '')) - Number(b.eval.replace(/^\+?M/, '')));
       candidates = [...new Set([...(mates.length ? mates.map(c => c.move) : prior.length ? prior : [r.move]), ...r.candidates.map(c => c.move)])];
@@ -193,38 +261,68 @@ async function expand(history) {
     const errors = [];
     for (let attempt = 0; attempt < candidates.length; attempt++) {
       const move = candidates[attempt];
-      if (!analyzeMove(board, indexOf(move), BLACK).legal) continue;
-      try {
-        await expand([...history, move]);
-        put(history, [move], prior.includes(move) ? 'preserved-reply' : move === proofMove ? 'shortest-vcf' : 'engine-reply');
-        return;
-      } catch (error) {
-        errors.push(error.message);
-        console.log('Retry black', history.length + 1, move, error.message.slice(0, 160));
-        if (attempt === candidates.length - 1) {
-          const r = await query(history, board, 5, 5000);
-          candidates.push(...[r.move, ...r.candidates.map(c => c.move)].filter(m => !candidates.includes(m)));
+      if (analyzeMove(board, indexOf(move), BLACK).legal) {
+        try {
+          await expand([...history, move], budget || (repair && !prior.includes(move) ? { left: REPAIR_BUDGET } : undefined));
+          put(history, [move], prior.includes(move) ? 'preserved-reply' : move === proofMove ? 'shortest-vcf' : 'engine-reply');
+          return;
+        } catch (error) {
+          if (budget && error instanceof BudgetExceeded) throw error;
+          errors.push(error.message);
+          console.log('Retry black', history.length + 1, move, error.message.slice(0, 160));
         }
+      }
+      if (attempt === candidates.length - 1) {
+        const r = await query(history, board, 5, 5000);
+        // A repair only replaces a reply with a proved win. Otherwise it wanders to the
+        // ply limit in positions Black cannot finish, at five seconds a move.
+        const engineMoves = repair ? r.candidates.filter(c => /^\+?M\d+$/.test(c.eval)).map(c => c.move) : [r.move, ...r.candidates.map(c => c.move)];
+        candidates.push(...[blackVcfMove(board), ...engineMoves].filter(m => m && !candidates.includes(m)));
       }
     }
     throw new Error('No closed black reply: ' + key + '\n' + errors.join('\n'));
   }
+  // A position White wins by force means Black's last move was wrong: fail it so
+  // the parent tries another reply.
+  const counter = whiteForcedWin(board);
+  if (counter) throw new Error('White has a forced win: ' + key + ' via ' + counter.join(' '));
   const boardKey = board.join('');
   let screen = screens.get(boardKey);
   if (!screen) { screen = screenWhite(board); screens.set(boardKey, screen); }
-  const existing = Object.keys(original.nodes[key]?.moves || {});
-  let proposal = screen.mode === 'forced' || (screen.candidates.length > 0 && screen.candidates.length <= 9)
-    ? { move: null, candidates: [] } : await query(history, board, 9, history.length === rootWhitePly ? rootWhiteMs : engineMs);
-  if (history.length === rootWhitePly && rootReplyMs && proposal.candidates.length) proposal = await refineRootProposal(history, board, proposal);
-  const moves = includeRequested(history, board, rankedDefenses(screen, proposal, existing));
+  const existing = Object.entries(original.nodes[key]?.moves || {}).filter(([, entry]) => entry.kind !== OPPOSITE_KIND).map(([move]) => move);
+  const { moves: chosen, selection, proposal, dropped } = await chooseDefenses(key, history, board, screen, existing);
+  const moves = includeRequested(history, board, chosen);
   if (!moves.length) throw new Error('No selected white defense: ' + key);
-  await expandDefenses(history, moves);
-  audit[key] = { mode: screen.mode, emptyPointsChecked: screen.checked, survivingPoints: screen.candidates.length,
-    selection: screen.mode === 'forced' ? 'all-forced' : screen.candidates.length <= 9 && screen.candidates.length ? 'all-tactical-survivors' : screen.mode === 'unavoidable' ? 'terminal-examples' : 'engine-ranked',
-    moves, candidates: proposal.candidates.map(({ move, eval: evaluation, depth, rootEvaluation, replyAnalysis }) => ({ move, evaluation, depth,
+  const closed = await expandDefenses(history, moves, move => budget || (repair && !existing.includes(move) ? { left: REPAIR_BUDGET } : undefined), repair && !budget && screen.mode !== 'forced');
+  if (!closed.length) throw new Error('No closed white defense: ' + key);
+  const unclosed = moves.filter(move => !closed.includes(move));
+  audit[key] = { mode: screen.mode, emptyPointsChecked: screen.checked, survivingPoints: screen.candidates.length, selection,
+    moves: closed, candidates: proposal.candidates.map(({ move, eval: evaluation, evaluation: stored, depth, rootEvaluation, replyAnalysis }) => ({ move, evaluation: evaluation ?? stored, depth,
       ...(rootEvaluation ? { rootEvaluation, replyAnalysis } : {}) })),
+    ...(Object.keys(dropped).length ? { omittedFours: Object.entries(dropped).map(([move, reason]) => ({ move, reason })) } : {}),
+    ...(unclosed.length ? { unclosedMoves: unclosed } : {}),
     ...(requestedMoves.has(key) ? { requestedMoves: requestedMoves.get(key) } : {}) };
-  put(history, moves, label + '-expanded-defense');
+  put(history, closed, label + '-expanded-defense');
+}
+function writeRepair() {
+  fs.writeFileSync(`artifacts/${label}-repair.json`, JSON.stringify({ version: BOOK_VERSION, label, book: bookLabel, root, nodes, audit, unresolved }));
+  console.log('Repaired', label, JSON.stringify({ nodes: Object.keys(nodes).length, whitePositions: Object.keys(audit).length, unresolved: unresolved.length, queries }));
+}
+function publish() {
+  const merged = { ...original, nodes: { ...Object.fromEntries(Object.entries(original.nodes).filter(([key]) => !key.startsWith(root))), ...nodes } };
+  const published = trimG8Book(merged);
+  const reachableAudit = Object.fromEntries(Object.entries(audit).filter(([key]) => published.nodes[key]));
+  published.coverage = { ...published.coverage, [label]: {
+    root, policy: MENU_POLICY,
+    exhaustiveLegalMoves: false, whitePositions: Object.keys(reachableAudit).length,
+    ...(Object.entries(reachableAudit).some(([key, entry]) => key.split(',').length === rootWhitePly && entry.candidates?.some(c => c.replyAnalysis)) ? { rootRefinement: { whiteSearchMs: rootWhiteMs, blackReplySearchMs: rootReplyMs, policy: 'Refine each of nine root candidates with an independent black search; use the shorter reported mate bound before applying the same six-ply band.' } } : {}),
+    selections: Object.values(reachableAudit).reduce((counts, item) => { counts[item.selection] = (counts[item.selection] || 0) + 1; return counts; }, {})
+  } };
+  console.log('Verified', JSON.stringify(verifyG8(published, opening)));
+  fs.writeFileSync(bookPath, JSON.stringify(published));
+  writeCompactG8(published, bookLabel);
+  fs.writeFileSync(coveragePath, JSON.stringify({ version: BOOK_VERSION, label, root, policy: published.coverage[label], positions: reachableAudit }));
+  console.log(branch + ' coverage', JSON.stringify(published.coverage[label]));
 }
 try {
   if (requestedOnly) {
@@ -239,18 +337,5 @@ try {
       put(history, moves, label + '-expanded-defense');
     }
   } else await expand(root.split(','));
-  const merged = { ...original, nodes: { ...Object.fromEntries(Object.entries(original.nodes).filter(([key]) => !key.startsWith(root))), ...nodes } };
-  const published = trimG8Book(merged);
-  const reachableAudit = Object.fromEntries(Object.entries(audit).filter(([key]) => published.nodes[key]));
-  published.coverage = { ...published.coverage, [label]: {
-    root, policy: 'All forced defenses; all one-move-loss escape points when at most nine; otherwise nine-PV engine screening with a 220-score / six-ply mate band, preserving prior viable choices. Terminal examples when no escape exists.',
-    exhaustiveLegalMoves: false, whitePositions: Object.keys(reachableAudit).length,
-    ...(Object.entries(reachableAudit).some(([key, entry]) => key.split(',').length === rootWhitePly && entry.candidates?.some(c => c.replyAnalysis)) ? { rootRefinement: { whiteSearchMs: rootWhiteMs, blackReplySearchMs: rootReplyMs, policy: 'Refine each of nine root candidates with an independent black search; use the shorter reported mate bound before applying the same six-ply band.' } } : {}),
-    selections: Object.values(reachableAudit).reduce((counts, item) => { counts[item.selection] = (counts[item.selection] || 0) + 1; return counts; }, {})
-  } };
-  console.log('Verified', JSON.stringify(verifyG8(published, opening)));
-  fs.writeFileSync(bookPath, JSON.stringify(published));
-  writeCompactG8(published, bookLabel);
-  fs.writeFileSync(coveragePath, JSON.stringify({ version: BOOK_VERSION, label, root, policy: published.coverage[label], positions: reachableAudit }));
-  console.log(branch + ' coverage', JSON.stringify(published.coverage[label]));
+  if (repair) writeRepair(); else publish();
 } finally { save(); for (const engine of engines) engine.close(); }

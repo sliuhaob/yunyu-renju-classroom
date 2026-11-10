@@ -1,19 +1,21 @@
 // Offline selection policy. Exact tactical screens precede engine ranking.
-import { BLACK, WHITE, analyzeMove, coordOf, nearbyMoves, winningMoves } from '../src/renju.mjs';
+export const MENU_POLICY = 'All forced defenses; all one-move-loss escape points when at most nine; otherwise nine-PV engine screening with a 220-score / six-ply mate band, preserving prior viable choices. Terminal examples when no escape exists. A non-forced white four is dropped before any of this when its forced block ends the game, gives Black a VCF he lacked, or leaves every White reply losing to VCF.';
+import { BLACK, WHITE, analyzeMove, coordOf, nearbyMoves, standingFourThree, winningMoves } from '../src/renju.mjs';
+import { pointlessFour } from './vcf-engine.mjs';
 
 export function immediateFinish(board) {
-  const danger = winningMoves(board, WHITE);
   for (const p of nearbyMoves(board, 2)) {
     const a = analyzeMove(board, p, BLACK);
     if (!a.legal) continue;
     if (a.win) return { move: coordOf(p), reason: 'five' };
-    if (a.fourThree && !danger.some(q => q !== p)) return { move: coordOf(p), reason: 'four-three' };
+    if (standingFourThree(board, p, a)) return { move: coordOf(p), reason: 'four-three' };
   }
   return null;
 }
 
 // Test every empty intersection, including distant counter-attacks. A legal
-// black four-three/open four only counts if white cannot win immediately.
+// black four-three/open four only counts if white cannot win immediately, and a
+// four-three only counts if White's forced block does not itself make a four.
 export function screenWhite(board) {
   const whiteWins = winningMoves(board, WHITE).map(coordOf);
   if (whiteWins.length) throw new Error('White has an immediate win: ' + whiteWins.join(' '));
@@ -31,7 +33,7 @@ export function screenWhite(board) {
       if (!a.legal) continue;
       if (a.win) { reason = 'five'; break; }
       if (counter.some(c => c !== q)) continue;
-      if (a.fourThree) { reason = 'four-three'; break; }
+      if (standingFourThree(board, q, a)) { reason = 'four-three'; break; }
       if (a.fours) {
         board[q] = BLACK;
         const open = winningMoves(board, BLACK).length > 1;
@@ -44,6 +46,20 @@ export function screenWhite(board) {
     else survivors.push(coordOf(p));
   }
   return { mode: survivors.length ? 'defense' : 'unavoidable', candidates: survivors, checked: survivors.length + Object.keys(rejected).length, rejected };
+}
+
+// Split moves into those worth offering and those that fail pointlessFour. Fours
+// must go before survivors are counted, or they fill the nine slots and set the
+// engine's evaluation band. `keep` is for moves the book owner asked for by name.
+export function usableMoves(board, moves, { keep = [], omitted = [] } = {}) {
+  const usable = [], dropped = {};
+  for (const move of moves) {
+    if (keep.includes(move)) { usable.push(move); continue; }
+    if (omitted.includes(move)) continue;
+    const reason = pointlessFour(board, move);
+    if (reason) dropped[move] = reason; else usable.push(move);
+  }
+  return { usable, dropped };
 }
 
 export function rankedDefenses(screen, proposal, existing = []) {

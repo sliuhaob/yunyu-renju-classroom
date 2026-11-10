@@ -1,4 +1,4 @@
-import { BLACK, WHITE, analyzeMove, coordOf, indexOf, winningMoves } from '../src/renju.mjs';
+import { BLACK, WHITE, analyzeMove, coordOf, fourThreeStands, indexOf, standingFourThree, winningMoves } from '../src/renju.mjs';
 
 // Replay the SAME recorded continuation, with no engine substitutions. This
 // deliberately conservative test never equates two merely losing positions.
@@ -19,9 +19,8 @@ export function continuationVerifier(nodes) {
       const p = row[i], child = row[i + 1], a = analyzeMove(board, p, turn);
       if (!a.legal || turn === WHITE && a.win) { valid = false; break; }
       board[p] = turn;
-      const end = turn === BLACK && (a.win || a.fourThree);
-      valid = end ? child === -1 && (a.win || !winningMoves(board, WHITE).length)
-        : child >= 0 && replay(board, child, turn === BLACK ? WHITE : BLACK);
+      const end = turn === BLACK && (a.win || a.fourThree && fourThreeStands(board));
+      valid = end ? child === -1 : child >= 0 && replay(board, child, turn === BLACK ? WHITE : BLACK);
       board[p] = 0;
     }
     cache.set(key, valid);
@@ -38,7 +37,7 @@ export function redundantFour(board, white, reply, suffix, replay) {
   if (board[w] || board[b] || w === b || analyzeMove(board, w, WHITE).win) return false;
   board[w] = WHITE;
   const threats = winningMoves(board, WHITE), a = analyzeMove(board, b, BLACK);
-  if (threats.length !== 1 || threats[0] !== b || !a.legal || a.win || a.fourThree) { board[w] = 0; return false; }
+  if (threats.length !== 1 || threats[0] !== b || !a.legal || a.win || standingFourThree(board, b, a)) { board[w] = 0; return false; }
   board[b] = BLACK;
   const actual = replay(board, suffix);
   board[w] = 0; board[b] = 0;

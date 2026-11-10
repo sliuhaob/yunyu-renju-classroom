@@ -5,12 +5,12 @@ import { BOOK_VERSION, OPENING } from '../src/book.mjs';
 import { coordOf } from '../src/renju.mjs';
 import { compactG8, writeCompactG8 } from './compact-g8.mjs';
 import { trimG8Book, trimLegacyBook } from './trim-books.mjs';
-import { continuationVerifier, boardOf, findRedundantFours } from './tempo-fours.mjs';
+import { continuationVerifier, boardOf, findRedundantFours, redundantFour } from './tempo-fours.mjs';
 import { screenWhite } from './f10-candidates.mjs';
 import { fillFourThreeSides } from './augment-double-four-three.mjs';
 
 export function prunePass(book, coverages = {}, previous = { nodes: [], positions: {} }, progress = () => {}) {
-  const graph = compactG8(book), replay = continuationVerifier(graph.nodes);
+  const graph = compactG8(book), replay = continuationVerifier(graph.nodes), oldReplay = continuationVerifier(previous.nodes);
   const positions = {}, replays = {}, nodes = [], ids = new Map(), signatures = new Map(), output = {};
   const audits = Object.fromEntries(Object.entries(coverages).map(([label, coverage]) => [label, { ...coverage, positions: {} }]));
   function copyProof(source, id, prefix) {
@@ -58,7 +58,8 @@ export function prunePass(book, coverages = {}, previous = { nodes: [], position
       // black reply. Record one proof per actually removed menu choice; a
       // coordinate retained by the final suffix is not a removed choice.
       const uniqueOmissions = [...new Map(omissions.filter(item => !moves[item.move]).map(item => [item.move, item])).values()];
-      const old = (previous.positions[key] || []).filter(item => !moves[item.move] && !uniqueOmissions.some(next => next.move === item.move));
+      // Stored proofs are rechecked: a rule change can invalidate the recorded ending.
+      const old = (previous.positions[key] || []).filter(item => !moves[item.move] && !uniqueOmissions.some(next => next.move === item.move) && redundantFour(board, item.move, item.reply, item.suffix, oldReplay));
       const proofs = [
         ...old.map(item => ({ ...item, suffix: copyProof(previous.nodes, item.suffix, 'old') })),
         ...uniqueOmissions.map(item => ({ ...item, suffix: copyProof(graph.nodes, item.suffix, 'new') }))
@@ -66,7 +67,8 @@ export function prunePass(book, coverages = {}, previous = { nodes: [], position
       assert.equal(new Set(proofs.map(item => item.move)).size, proofs.length);
       if (proofs.length) positions[key] = proofs;
       if (grafted) replays[key] = copyProof(graph.nodes, id, 'new');
-      else if (previous.replays?.[key] !== undefined) replays[key] = copyProof(previous.nodes, previous.replays[key], 'old');
+      // A repaired menu has been screened like any other and no longer rests on its replay.
+      else if (previous.replays?.[key] !== undefined && !Object.values(coverages).some(coverage => coverage.positions[key] && coverage.positions[key].selection !== 'tempo-replay')) replays[key] = copyProof(previous.nodes, previous.replays[key], 'old');
       for (const [label, coverage] of Object.entries(coverages)) {
         if (!key.startsWith(coverage.root + ',')) continue;
         const oldEntry = coverage.positions[key];
@@ -109,7 +111,7 @@ function main() {
   const prefix = label === 'g8' ? '' : label + '-';
   const proofPath = `data/${prefix}tempo-four-pruning.json`;
   let book = JSON.parse(fs.readFileSync(`data/${label}.json`, 'utf8'));
-  let coverages = Object.fromEntries((label === 'g8' ? ['f10', 'f11', 'h9'] : [label]).filter(label => fs.existsSync(`data/${label}-coverage.json`))
+  let coverages = Object.fromEntries((label === 'g8' ? ['f10', 'f11', 'h9', 'h11'] : [label]).filter(label => fs.existsSync(`data/${label}-coverage.json`))
     .map(label => [label, JSON.parse(fs.readFileSync(`data/${label}-coverage.json`, 'utf8'))]));
   let proof = fs.existsSync(proofPath) ? JSON.parse(fs.readFileSync(proofPath, 'utf8')) : { nodes: [], positions: {} };
   let removed = 0, collapsed = 0, pass;

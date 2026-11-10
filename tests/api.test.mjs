@@ -16,22 +16,19 @@ test('G8 challenge fixes the opening and both white-six lessons remain available
   assert.deepEqual(advance(book, start.history, 'G8', 'main').choices, ['F10', 'H11', 'F11', 'H9']);
   const afterH11 = advance(book, [...start.history, 'G8', 'F9'], 'H11', 'main');
   assert.equal(afterH11.blackMove, 'E9');
-  assert.deepEqual(afterH11.choices, ['F7', 'J11', 'D9', 'F11', 'H9']);
+  assert.deepEqual(afterH11.choices, ['F7', 'J11', 'D9', 'F11', 'H9', 'I10']);
   const afterF11 = advance(book, afterH11.history, 'F11', 'main');
   assert.equal(afterF11.blackMove, 'D9');
   const afterC9 = advance(book, afterF11.history, 'C9', 'main');
   assert.equal(afterC9.blackMove, 'F10');
-  assert.deepEqual(afterC9.choices, ['E11', 'G9', 'E10']);
+  // E10 used to be offered here, but Black's block at G9 is a standing four-three.
+  assert.deepEqual(afterC9.choices, ['E11', 'G9', 'H9', 'I7']);
   assert.equal(advance(book, afterC9.history, 'G9', 'main').blackMove, 'D10');
-  const afterE10 = advance(book, afterC9.history, 'E10', 'main');
-  assert.equal(afterE10.blackMove, 'G9');
-  assert.equal(afterE10.outcome.reason, 'four-three');
-  assert.equal(afterE10.history.length, 15);
-  assert.deepEqual(afterE10.choices, []);
+  assert.throws(() => advance(book, afterC9.history, 'E10', 'main'), error => error.code === 'OUT_OF_BOOK');
   assert.equal(advance(book, afterH11.history, 'H9', 'main').blackMove, 'F10');
   const afterD9 = advance(book, afterH11.history, 'D9', 'main');
   assert.equal(afterD9.blackMove, 'F11');
-  assert.deepEqual(afterD9.choices, ['H9', 'E12']);
+  assert.deepEqual(afterD9.choices, ['H9', 'E12', 'J7']);
   const afterE12 = advance(book, afterD9.history, 'E12', 'main');
   assert.equal(afterE12.blackMove, 'F10');
 });
@@ -40,7 +37,7 @@ test('white eighteen I10 is available on the C9 side line and stops at four-thre
   assert.deepEqual(getState(book, history, 'main').choices, ['E10', 'I10']);
   const reply = advance(book, history, 'I10', 'main');
   assert.equal(reply.blackMove, 'F8');
-  assert.deepEqual(reply.choices, ['E7', 'G9', 'F7', 'D10']);
+  assert.deepEqual(reply.choices, ['E7', 'G9', 'F7', 'D10', 'C11', 'E10', 'G7']);
   for (const defense of ['E7', 'G9', 'F7']) {
     const end = advance(book, reply.history, defense, 'main');
     assert.equal(end.blackMove, 'D10');
@@ -56,7 +53,7 @@ test('white eighteen I10 is available on the C9 side line and stops at four-thre
 });
 test('white twenty F8 after F7 is met by E8 and ends at four-three', () => {
   const history = [...OPENING, 'G10', 'G8', 'F9', 'H11', 'E9', 'F11', 'D9', 'C9', 'F10', 'G9', 'D10', 'E10', 'D7', 'D8', 'F7'];
-  assert.deepEqual(getState(book, history, 'main').choices, ['E8', 'G6', 'C6', 'F8']);
+  assert.deepEqual(getState(book, history, 'main').choices, ['E8', 'G6', 'C6', 'F8', 'E7', 'G7', 'F6', 'C11', 'G5']);
   const end = advance(book, history, 'F8', 'main');
   assert.equal(end.blackMove, 'E8');
   assert.equal(end.outcome.reason, 'four-three');
@@ -68,8 +65,8 @@ test('white twenty D11 after D12 is met by C11 and ends at four-three', () => {
   assert.deepEqual(getState(book, history, 'main').choices, ['D8', 'D13', 'D11']);
   const reply = advance(book, history, 'D11', 'main');
   assert.equal(reply.blackMove, 'C11');
-  assert.deepEqual(reply.choices, ['B12', 'F8']);
-  for (const defense of reply.choices) {
+  assert.deepEqual(reply.choices, ['B12', 'F8', 'E13', 'F14', 'E12', 'B10']);
+  for (const defense of ['B12', 'F8']) {
     const end = advance(book, reply.history, defense, 'main');
     assert.equal(end.blackMove, 'E13');
     assert.equal(end.outcome.reason, 'four-three');
@@ -79,13 +76,13 @@ test('white twenty D11 after D12 is met by C11 and ends at four-three', () => {
 });
 test('white fourteen J9 tempo-four and its old descendants are no longer playable', () => {
   const history = [...OPENING, 'G10', 'G8', 'F9', 'H11', 'E9', 'H9', 'F10', 'G9', 'D10'];
-  assert.deepEqual(getState(book, history, 'main').choices, ['E10']);
+  assert.deepEqual(getState(book, history, 'main').choices, ['E10', 'C10', 'H10']);
   assert.throws(() => advance(book, history, 'J9', 'main'), error => error.code === 'OUT_OF_BOOK');
   assert.throws(() => getState(book, [...history, 'J9', 'K9'], 'main'), error => error.code === 'OUT_OF_BOOK');
 });
 test('white fourteen E10 after D10 is available and has a fixed D8 reply', () => {
   const history = [...OPENING, 'G10', 'G8', 'F9', 'H11', 'E9', 'H9', 'F10', 'G9', 'D10'];
-  assert.deepEqual(getState(book, history, 'main').choices, ['E10']);
+  assert.deepEqual(getState(book, history, 'main').choices, ['E10', 'C10', 'H10']);
   const reply = advance(book, history, 'E10', 'main');
   assert.equal(reply.blackMove, 'D8');
   assert.deepEqual(reply.choices, ['C7', 'G11']);
