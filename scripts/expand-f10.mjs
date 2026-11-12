@@ -334,6 +334,10 @@ try {
       const moves = includeRequested(history, board, Object.keys(parent.moves));
       await expandDefenses(history, additions);
       audit[key] = { ...audit[key], moves, requestedMoves: additions };
+      if (audit[key].unclosedMoves) {
+        audit[key].unclosedMoves = audit[key].unclosedMoves.filter(move => !moves.includes(move));
+        if (!audit[key].unclosedMoves.length) delete audit[key].unclosedMoves;
+      }
       put(history, moves, label + '-expanded-defense');
     }
   } else await expand(root.split(','));

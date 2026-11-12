@@ -13,6 +13,7 @@
     "expand:h9": "node scripts/expand-f10.mjs --branch=H9 && node scripts/prune-tempo-fours.mjs",
     "expand:h11": "node scripts/expand-f10.mjs --branch=H11 && node scripts/prune-tempo-fours.mjs",
     "add:f10": "node scripts/expand-f10.mjs --requested-only && node scripts/prune-tempo-fours.mjs",
+    "add:h11": "node scripts/expand-f10.mjs --branch=H11 --requested-only && node scripts/prune-tempo-fours.mjs",
     "prune:book": "node scripts/prune-tempo-fours.mjs",
     "complete:sides": "node scripts/augment-double-four-three.mjs",
     "compact:book": "node scripts/compact-g8.mjs",

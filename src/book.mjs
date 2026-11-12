@@ -1,4 +1,4 @@
-export const BOOK_VERSION = "2026-11-06.1";
+export const BOOK_VERSION = "2026-11-11.1";
 export const FIXED_OPENING = ['H8', 'I9', 'I8'];
 export const FLOWER_OPENING = ['H8', 'I8', 'I9'];
 // Archived H7 books keep their four-stone root.
