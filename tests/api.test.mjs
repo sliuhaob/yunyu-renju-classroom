@@ -16,11 +16,15 @@ test('G8 challenge fixes the opening and both white-six lessons remain available
   assert.deepEqual(advance(book, start.history, 'G8', 'main').choices, ['F10', 'H11', 'F11', 'H9']);
   const afterH11 = advance(book, [...start.history, 'G8', 'F9'], 'H11', 'main');
   assert.equal(afterH11.blackMove, 'E9');
-  assert.deepEqual(afterH11.choices, ['F7', 'J11', 'D9', 'F11', 'H9', 'I10', 'H10']);
+  assert.deepEqual(afterH11.choices, ['F7', 'J11', 'D9', 'F11', 'H9', 'I10', 'H10', 'G9']);
   const afterH10 = advance(book, afterH11.history, 'H10', 'main');
   assert.equal(afterH10.blackMove, 'F11');
   assert.deepEqual(afterH10.choices, ['E12', 'H9', 'J7']);
   assert.equal(afterH10.outcome, null);
+  const afterG9 = advance(book, afterH11.history, 'G9', 'main');
+  assert.equal(afterG9.blackMove, 'D10');
+  assert.deepEqual(afterG9.choices, ['F8', 'E8', 'E12', 'F11', 'E7', 'K9', 'H12', 'H9', 'F10']);
+  assert.equal(afterG9.outcome, null);
   const afterF11 = advance(book, afterH11.history, 'F11', 'main');
   assert.equal(afterF11.blackMove, 'D9');
   const afterC9 = advance(book, afterF11.history, 'C9', 'main');
